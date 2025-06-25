@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, addDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBV_kaqlAtLTBNEcIHpc0rWHTbWXdgsXME",
@@ -77,18 +77,29 @@ function initApp() {
             renderContent();
         }
     });
+
+    const searchInput = document.getElementById('search-filter');
+    if (searchInput) {
+        searchInput.addEventListener('input', () => renderProducts());
+    }
+    const categoryFilter = document.getElementById('category-filter');
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', () => renderProducts());
+    }
 }
 
 function updateAuthUI() {
     const authText = document.getElementById('auth-text');
     const authBtn = document.querySelector('.auth-btn');
     if (authText && authBtn) {
+        const newBtn = authBtn.cloneNode(true);
+        authBtn.parentNode.replaceChild(newBtn, authBtn);
         if (user) {
             authText.textContent = 'تسجيل الخروج';
-            authBtn.addEventListener('click', handleLogout);
+            newBtn.addEventListener('click', handleLogout);
         } else {
             authText.textContent = 'تسجيل الدخول';
-            authBtn.addEventListener('click', openAuthModal);
+            newBtn.addEventListener('click', openAuthModal);
         }
     }
 }
@@ -162,7 +173,7 @@ function renderFeaturedProducts() {
                 <h3>${product.name}</h3>
                 <p>${product.desc || ''}</p>
                 <p class="price">${product.price} جنيه</p>
-                <button class="cta-button add-to-cart" data-product-id="${product.id}">أضف إلى السلة</button>
+                <button class="cta-button add-to-cart-btn" data-product-id="${product.id}">أضف إلى السلة</button>
             </div>`).join('');
 }
 
@@ -171,9 +182,12 @@ function renderProducts() {
     if (!container) return;
     const categoryFilter = document.getElementById('category-filter')?.value || 'all';
     const searchFilter = document.getElementById('search-filter')?.value.toLowerCase() || '';
-    const filteredProducts = products.filter(product => 
-        (categoryFilter === 'all' || product.category && product.category === categoryFilter) &&
-        (product.name.toLowerCase().includes(searchFilter) || (product.desc && product.description)?.toLowerCase().includes(searchFilter))
+    const filteredProducts = products.filter(product =>
+        (categoryFilter === 'all' || (product.category && product.category === categoryFilter)) &&
+        (
+            (product.name && product.name.toLowerCase().includes(searchFilter)) ||
+            (product.desc && product.desc.toLowerCase().includes(searchFilter))
+        )
     );
     container.innerHTML = filteredProducts.length === 0
         ? '<p class="empty-message">لا توجد منتجات متاحة.</p>'
@@ -183,7 +197,7 @@ function renderProducts() {
                 <h3>${product.name}</h3>
                 <p>${product.desc || ''}</p>
                 <p class="price">${product.price} جنيه</p>
-                <button class="cta-button add-to-cart-btn" data-product-id="${product.id}"">أضف إلى السلة</button>
+                <button class="cta-button add-to-cart-btn" data-product-id="${product.id}">أضف إلى السلة</button>
             </div>`).join('');
 }
 
@@ -214,7 +228,7 @@ function renderCart() {
                             <button class="quantity-btn" data-product-id="${product.id}" data-action="increase">+</button>
                         </div>
                     </div>
-                    <button class="remove-from-cart" data-product-id="${product.id}" data-product-id="${product.id}">إزالة</button>
+                    <button class="remove-from-cart" data-product-id="${product.id}">إزالة</button>
                 </div>
             `;
         }).join('');
@@ -224,14 +238,32 @@ function renderCart() {
 
 function updateCartTotal() {
     const totalElement = document.getElementById('cart-total');
-    const discountedTotalElement = document.getElementById('cart-total-total');
-    if (!totalElement || !discountedTotalElement) return;
+    const discountedTotalElement = document.getElementById('cart-discounted-total');
+    const discountRow = document.getElementById('discount-row');
     let total = cart.reduce((sum, item) => {
         const product = products.find(p => p.id === item.id);
         return sum + (product ? product.price * item.quantity : 0);
     }, 0);
     totalElement.textContent = total.toFixed(2);
-    discountedTotalElement.textContent = total.toFixed(2); // Update with coupon logic if needed
+
+    // تحقق إذا كان في خصم مطبق
+    const couponCode = document.getElementById('coupon-code')?.value.toUpperCase();
+    let discountedTotal = total;
+    if (couponCode) {
+        const coupon = Object.values(coupons).find(c => c.code === couponCode);
+        if (coupon) {
+            discountedTotal = coupon.type === 'percent'
+                ? total * (1 - coupon.value / 100)
+                : total - coupon.value;
+            discountedTotal = Math.max(discountedTotal, 0);
+        }
+    }
+    discountedTotalElement.textContent = discountedTotal.toFixed(2);
+    if (discountedTotal < total) {
+        discountRow.style.display = '';
+    } else {
+        discountRow.style.display = 'none';
+    }
 }
 
 function handleLogin(e) {
@@ -295,17 +327,10 @@ async function applyCoupon() {
     const coupon = Object.values(coupons).find(c => c.code === couponCode);
     if (!coupon) {
         showToast('كود الخصم غير صالح', 'error');
+        updateCartTotal();
         return;
     }
-    let total = cart.reduce((sum, item) => {
-        const product = products.find(p => p.id === item.id);
-        return sum + (product ? product.price * item.quantity : 0);
-    }, 0);
-    let discountedTotal = coupon.type === 'percent'
-        ? total * (1 - coupon.value / 100)
-        : total - coupon.value;
-    discountedTotal = Math.max(discountedTotal, 0);
-    document.getElementById('cart-discounted-total').textContent = discountedTotal.toFixed(2);
+    updateCartTotal();
     showToast('تم تطبيق كود الخصم بنجاح!', 'success');
 }
 
@@ -398,7 +423,7 @@ function handleGlobalClick(e) {
         updateCartItemQuantity(productId, action);
     }
 
-    const removeFromCartBtn = target.closest('.remove-from-cart-btn');
+    const removeFromCartBtn = target.closest('.remove-from-cart');
     if (removeFromCartBtn) {
         const productId = removeFromCartBtn.dataset.productId;
         removeFromCart(productId);
@@ -414,16 +439,6 @@ function handleGlobalClick(e) {
     if (showLoginBtn) {
         e.preventDefault();
         showLoginForm();
-    }
-
-    const categoryFilter = document.getElementById('category-filter');
-    if (categoryFilter && target === categoryFilter) {
-        renderProducts();
-    }
-
-    const searchInput = document.getElementById('search-filter');
-    if (searchInput && target === searchInput) {
-        searchInput.addEventListener('input', () => renderProducts());
     }
 
     const authModal = document.getElementById('auth-modal');
@@ -443,6 +458,7 @@ function addToCart(productId) {
     }
     localStorage.setItem('cart', JSON.stringify(cart));
     updateCartUI();
+    renderCart();
     showToast('تم إضافة المنتج إلى السلة!', 'success');
 }
 
@@ -476,7 +492,11 @@ function updateCartUI() {
 
 function openAuthModal() {
     const authModal = document.getElementById('auth-modal');
-    if (authModal) authModal.classList.add('open');
+    if (authModal) {
+        authModal.classList.add('open');
+        document.getElementById('login-form').style.display = "";
+        document.getElementById('signup-form').style.display = "none";
+    }
 }
 
 function closeAuthModal() {
@@ -488,8 +508,8 @@ function showSignupForm() {
     const loginForm = document.getElementById('login-form');
     const signupForm = document.getElementById('signup-form');
     if (loginForm && signupForm) {
-        loginForm.classList.add('hidden');
-        signupForm.classList.remove('hidden');
+        loginForm.style.display = "none";
+        signupForm.style.display = "";
     }
 }
 
@@ -497,8 +517,8 @@ function showLoginForm() {
     const loginForm = document.getElementById('login-form');
     const signupForm = document.getElementById('signup-form');
     if (loginForm && signupForm) {
-        loginForm.classList.remove('hidden');
-        signupForm.classList.add('hidden');
+        loginForm.style.display = "";
+        signupForm.style.display = "none";
     }
 }
 
