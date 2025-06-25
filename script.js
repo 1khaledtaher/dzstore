@@ -1,4 +1,4 @@
-// DZ Store - أحدث نسخة مع فتح صفحة التسوق للجميع وكل الميزات المطلوبة
+// DZ Store - النسخة الأحدث: القائمة الجانبية وسط، الهامبرجر toggle، زر المفضلة تحديث لحظي، المنتجات دائماً متاحة.
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
@@ -42,7 +42,7 @@ function showSection(section) {
 function route() {
     let hash = location.hash.replace('#', '');
     if (!hash || !['home', 'shop', 'favorites', 'cart', 'orders', 'profile'].includes(hash)) hash = 'home';
-    // يجب تسجيل الدخول فقط لهذه الصفحات
+    // فقط هذه الصفحات تتطلب تسجيل الدخول
     if (['cart', 'favorites', 'orders', 'profile'].includes(hash) && !user) {
         openAuthModal();
         location.hash = '#home';
@@ -54,7 +54,7 @@ function route() {
     if (hash === 'cart') renderCart();
     if (hash === 'orders') renderOrders();
     if (hash === 'profile') renderProfile();
-    if (hash === 'shop') renderShop(); // صفحة التسوق متاحة للجميع
+    if (hash === 'shop') renderShop();
     if (hash === 'home') {
         renderFeaturedProducts();
         renderGreeting();
@@ -69,12 +69,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('loading-overlay').style.display = "none";
     route();
 
-    document.querySelector('.hamburger').addEventListener('click', openHamburgerMenu);
-    document.body.addEventListener('click', function(e) {
-      if (e.target.classList.contains('nav-link') || e.target.id === 'auth-btn') closeHamburgerMenu();
-      if (window.innerWidth < 800 && !e.target.closest('.nav-links') && !e.target.classList.contains('hamburger')) closeHamburgerMenu();
+    // Hamburger toggle (فتح وغلق بنفس الزر)
+    const hamburger = document.querySelector('.hamburger');
+    hamburger.addEventListener('click', () => {
+      document.querySelector('.nav-links').classList.toggle('open');
     });
-
+    document.body.addEventListener('click', function(e) {
+      if (window.innerWidth < 800 && !e.target.closest('.nav-links') && !e.target.classList.contains('hamburger')) {
+        document.querySelector('.nav-links').classList.remove('open');
+      }
+    });
     document.getElementById('close-product-modal').onclick = closeProductModal;
     document.getElementById('modal-add-cart').onclick = () => addToCart(modalCurrentProductId, true);
     document.getElementById('modal-add-fav').onclick = modalFavHandler;
@@ -85,14 +89,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('shop-search-filter').oninput = renderShop;
 });
 
-function openHamburgerMenu() {
-  document.querySelector('.nav-links').classList.add('open');
-}
-function closeHamburgerMenu() {
-  document.querySelector('.nav-links').classList.remove('open');
-}
-
-// --------- Auth + UI ---------
 async function initApp() {
     document.body.addEventListener('click', handleGlobalClick);
 
@@ -280,8 +276,8 @@ function makeProductCard(product, isFeatured = false) {
         <p class="price">${product.price} جنيه</p>
         <div class="product-actions">
           <button class="add-to-cart-btn" data-product-id="${product.id}">أضف للسلة</button>
-          <button class="add-to-fav-btn" data-product-id="${product.id}" style="${isFav ? 'background:#fbbf24;' : ''}">
-            ${isFav ? "★" : "☆"} مفضلة
+          <button class="add-to-fav-btn${isFav ? ' fav' : ''}" data-product-id="${product.id}">
+            ${isFav ? "★ تمت الإضافة للمفضلة" : "☆ أضف للمفضلة"}
           </button>
         </div>
       </div>
@@ -457,6 +453,7 @@ function renderProfile() {
 function handleGlobalClick(e) {
     const target = e.target;
 
+    // المنتج: فتح النافذة المنبثقة عند الضغط على البطاقة
     if (target.closest('.product-card') && !target.classList.contains('add-to-cart-btn') && !target.classList.contains('add-to-fav-btn')) {
         const card = target.closest('.product-card');
         const productId = card.dataset.productId;
@@ -471,7 +468,7 @@ function handleGlobalClick(e) {
     if (target.classList.contains('add-to-fav-btn')) {
         const productId = target.dataset.productId;
         if (!user) { openAuthModal(); showToast('سجّل الدخول لإضافة للمفضلة', 'error'); return; }
-        toggleFavorite(productId);
+        toggleFavorite(productId, target);
     }
     if (target.classList.contains('quantity-btn')) {
         const productId = target.dataset.productId;
@@ -491,7 +488,7 @@ function modalFavHandler() {
     modalFavClickLock = true;
     setTimeout(() => modalFavClickLock = false, 250);
     if (!user) { openAuthModal(); showToast('سجّل الدخول لإضافة للمفضلة', 'error'); return; }
-    toggleFavorite(modalCurrentProductId);
+    toggleFavorite(modalCurrentProductId, document.getElementById('modal-add-fav'));
     updateModalFavBtn();
 }
 function openProductModal(productId) {
@@ -515,8 +512,7 @@ function updateModalFavBtn() {
     if (!btn) return;
     const isFav = favorites.includes(modalCurrentProductId);
     btn.innerHTML = isFav ? "★ تمت الإضافة للمفضلة" : "☆ أضف للمفضلة";
-    if (isFav) btn.style.background = "#fbbf24";
-    else btn.style.background = "";
+    btn.classList.toggle("fav", isFav);
 }
 
 // --------- Cart/Fav DB ----------
@@ -559,8 +555,9 @@ async function saveCartToDB() {
     if (!user) return;
     await setDoc(doc(db, "users", user.uid, "cart", "cart"), { items: cart });
 }
-function toggleFavorite(productId) {
-    if (favorites.includes(productId)) {
+function toggleFavorite(productId, btn = null) {
+    let isFav = favorites.includes(productId);
+    if (isFav) {
         favorites = favorites.filter(id => id !== productId);
         showToast('تم إزالة المنتج من المفضلة', 'info');
     } else {
@@ -569,8 +566,16 @@ function toggleFavorite(productId) {
     }
     saveFavorites();
     saveFavoritesToDB();
-    renderProducts();
-    renderFavorites();
+    // تحديث الزر الحالي لحظياً
+    if (btn) {
+        btn.classList.toggle("fav", !isFav);
+        btn.innerHTML = !isFav ? "★ تمت الإضافة للمفضلة" : "☆ أضف للمفضلة";
+    }
+    // تحديث كل أزرار المفضلة الأخرى لحظياً
+    document.querySelectorAll(`.add-to-fav-btn[data-product-id="${productId}"]`).forEach(el => {
+        el.classList.toggle("fav", favorites.includes(productId));
+        el.innerHTML = favorites.includes(productId) ? "★ تمت الإضافة للمفضلة" : "☆ أضف للمفضلة";
+    });
     updateModalFavBtn();
 }
 function saveFavorites() {
@@ -604,7 +609,6 @@ function applyCoupon() {
 async function handleCheckout() {
     if (!user) { openAuthModal(); showToast('سجّل الدخول أولاً لإتمام الطلب', 'error'); return; }
     if (!cart.length) { showToast('سلة التسوق فارغة', 'error'); return; }
-    // منع تكرار الطلبات خلال دقيقة
     const now = Date.now();
     if (now - lastOrderTime < 60000) {
         showToast("يرجى الانتظار دقيقة قبل إرسال طلب جديد.", "error");
