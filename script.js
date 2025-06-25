@@ -1,4 +1,4 @@
-// DZ Store - النسخة الأحدث: القائمة الجانبية وسط، الهامبرجر toggle، زر المفضلة تحديث لحظي، المنتجات دائماً متاحة.
+// DZ Store - النسخة المعدلة: زر نحن، تحميل المنتجات دائماً، إصلاح التسجيل، ترتيب الطلبات، وكل طلباتك الأخيرة
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
@@ -29,6 +29,7 @@ let lastOrderId = 0;
 
 let modalCurrentProductId = null;
 let modalFavClickLock = false;
+let firstLoadDone = false;
 
 // --------- SPA Routing ----------
 function showSection(section) {
@@ -41,8 +42,7 @@ function showSection(section) {
 }
 function route() {
     let hash = location.hash.replace('#', '');
-    if (!hash || !['home', 'shop', 'favorites', 'cart', 'orders', 'profile'].includes(hash)) hash = 'home';
-    // فقط هذه الصفحات تتطلب تسجيل الدخول
+    if (!hash || !['home', 'shop', 'favorites', 'cart', 'orders', 'profile', 'about'].includes(hash)) hash = 'home';
     if (['cart', 'favorites', 'orders', 'profile'].includes(hash) && !user) {
         openAuthModal();
         location.hash = '#home';
@@ -62,14 +62,18 @@ function route() {
 }
 window.addEventListener('hashchange', route);
 
-// --------- Initializers / Loading ----------
 document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('loading-overlay').style.display = "flex";
-    await initApp();
+    await loadProducts();
+    await loadCategories();
+    renderFeaturedProducts();
+    renderShop();
+    firstLoadDone = true;
     document.getElementById('loading-overlay').style.display = "none";
+
+    await initApp();
     route();
 
-    // Hamburger toggle (فتح وغلق بنفس الزر)
     const hamburger = document.querySelector('.hamburger');
     hamburger.addEventListener('click', () => {
       document.querySelector('.nav-links').classList.toggle('open');
@@ -99,8 +103,14 @@ async function initApp() {
     document.getElementById('apply-coupon').addEventListener('click', applyCoupon);
     document.getElementById('checkout-btn').addEventListener('click', handleCheckout);
 
-    document.getElementById('show-signup').addEventListener('click', e => {e.preventDefault(); showSignupForm();});
-    document.getElementById('show-login').addEventListener('click', e => {e.preventDefault(); showLoginForm();});
+    document.getElementById('show-signup').addEventListener('click', e => {
+        e.preventDefault();
+        showSignupForm();
+    });
+    document.getElementById('show-login').addEventListener('click', e => {
+        e.preventDefault();
+        showLoginForm();
+    });
 
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
     document.getElementById('refresh-profile-btn').addEventListener('click', () => { showToast('تم تحديث البيانات!', 'success'); renderProfile(); });
@@ -143,8 +153,6 @@ function renderGreeting() {
 
 // --------- Load Data ---------
 async function loadUserData() {
-    await loadProducts();
-    await loadCategories();
     await loadCoupons();
     await loadOrders();
     await loadCartFromDB();
@@ -377,13 +385,6 @@ function updateCartUI() {
 }
 
 // --------- Orders ----------
-async function cancelOrder(orderId) {
-    const orderRef = doc(db, "orders", orderId);
-    await updateDoc(orderRef, { status: "cancelled" });
-    showToast("تم إلغاء الطلب بنجاح!", "success");
-    await loadOrders();
-    renderOrders();
-}
 function formatOrderDate(dateISO) {
     const d = new Date(dateISO);
     let hours = d.getHours();
@@ -402,7 +403,15 @@ function renderOrders() {
         container.innerHTML = '<p class="empty-message">لا توجد طلبات حاليًا.</p>';
         return;
     }
-    container.innerHTML = orders.map(order => {
+    // ترتيب: الطلبات غير الملغية (الأحدث فالأقدم) ثم الملغية (الأقدم فالأحدث)
+    const activeStatuses = ["review", "shipping", "delivered", "returned"];
+    const activeOrders = orders.filter(o => !o.status || activeStatuses.includes(o.status));
+    const cancelledOrders = orders.filter(o => o.status === "cancelled");
+    activeOrders.sort((a, b) => new Date(b.date) - new Date(a.date));
+    cancelledOrders.sort((a, b) => new Date(a.date) - new Date(b.date));
+    const allSorted = [...activeOrders, ...cancelledOrders];
+
+    container.innerHTML = allSorted.map(order => {
         const statusInfo = {
             review: { text: "تحت المراجعة", class: "review" },
             shipping: { text: "قيد التوصيل", class: "shipping" },
@@ -411,7 +420,6 @@ function renderOrders() {
             returned: { text: "تم الإرجاع", class: "returned" }
         }[order.status] || { text: 'غير معروف', class: '' };
         const itemsSummary = order.items.map(item => `${item.name} (x${item.quantity})`).join('، ');
-        let couponInfo = "";
         let totalBefore = order.total_before_discount ? `<p><strong>الإجمالي قبل الخصم:</strong> ${order.total_before_discount.toFixed(2)} جنيه</p>` : "";
         let couponCodeText = order.coupon_code ? `<p><strong>كود الخصم المستخدم:</strong> ${order.coupon_code}</p>` : "";
         let totalAfter = order.total !== order.total_before_discount ? `<p><strong>الإجمالي بعد الخصم:</strong> ${order.total.toFixed(2)} جنيه</p>` : "";
@@ -432,7 +440,13 @@ function renderOrders() {
             </div>`;
     }).join('');
 }
-window.cancelOrder = cancelOrder;
+window.cancelOrder = async function(orderId) {
+    const orderRef = doc(db, "orders", orderId);
+    await updateDoc(orderRef, { status: "cancelled" });
+    showToast("تم إلغاء الطلب بنجاح!", "success");
+    await loadOrders();
+    renderOrders();
+};
 
 // --------- Profile ---------
 function renderProfile() {
@@ -441,7 +455,6 @@ function renderProfile() {
     document.getElementById('profile-email').textContent = user.email;
     document.getElementById('profile-date').textContent = user.metadata?.creationTime?.split(' ')[0] || "-";
     document.getElementById('profile-avatar-img').src = `https://ui-avatars.com/api/?background=3b82f6&color=fff&name=${encodeURIComponent(user.displayName || user.email.charAt(0))}`;
-    // إذا كان تسجيل جوجل فقط أخفِ زر تغيير كلمة السر
     if (user.providerData.some(p => p.providerId === "google.com")) {
         document.getElementById('refresh-profile-btn').style.display = "";
         const changePassBtn = document.getElementById('change-password-btn');
@@ -453,7 +466,6 @@ function renderProfile() {
 function handleGlobalClick(e) {
     const target = e.target;
 
-    // المنتج: فتح النافذة المنبثقة عند الضغط على البطاقة
     if (target.closest('.product-card') && !target.classList.contains('add-to-cart-btn') && !target.classList.contains('add-to-fav-btn')) {
         const card = target.closest('.product-card');
         const productId = card.dataset.productId;
@@ -566,12 +578,10 @@ function toggleFavorite(productId, btn = null) {
     }
     saveFavorites();
     saveFavoritesToDB();
-    // تحديث الزر الحالي لحظياً
     if (btn) {
         btn.classList.toggle("fav", !isFav);
         btn.innerHTML = !isFav ? "★ تمت الإضافة للمفضلة" : "☆ أضف للمفضلة";
     }
-    // تحديث كل أزرار المفضلة الأخرى لحظياً
     document.querySelectorAll(`.add-to-fav-btn[data-product-id="${productId}"]`).forEach(el => {
         el.classList.toggle("fav", favorites.includes(productId));
         el.innerHTML = favorites.includes(productId) ? "★ تمت الإضافة للمفضلة" : "☆ أضف للمفضلة";
@@ -621,6 +631,7 @@ async function handleCheckout() {
     }, 0);
     const couponCode = document.getElementById('coupon-code')?.value?.toUpperCase() || "";
     let totalBefore = total;
+    let coupon_code_field = undefined;
     if (couponCode) {
         const coupon = Object.values(coupons).find(c => c.code === couponCode);
         if (coupon) {
@@ -628,9 +639,9 @@ async function handleCheckout() {
                 ? total * (1 - coupon.value / 100)
                 : total - coupon.value;
             total = Math.max(total, 0);
+            coupon_code_field = couponCode;
         }
     }
-    // رقم طلب فريد 5 أرقام (يزيد كل مرة)
     const newOrderNumber = lastOrderId + 1;
     try {
         await setDoc(doc(db, "meta", "lastOrderId"), { value: newOrderNumber });
@@ -640,17 +651,16 @@ async function handleCheckout() {
     }
 
     const order = {
-    userId: user.uid,
-    items: cart,
-    total: total,
-    total_before_discount: totalBefore,
-    status: 'review',
-    date: new Date().toISOString(),
-    order_number: lastOrderId
+        userId: user.uid,
+        items: cart,
+        total: total,
+        total_before_discount: totalBefore,
+        status: 'review',
+        date: new Date().toISOString(),
+        order_number: lastOrderId
     };
-    if (couponCode) {
-        order.coupon_code = couponCode;
-    }
+    if (coupon_code_field) order.coupon_code = coupon_code_field;
+
     try {
         await addDoc(collection(db, "orders"), order);
         cart = [];
@@ -669,6 +679,7 @@ async function handleCheckout() {
 // --------- Auth & Profile ---------
 function handleLogin(e) {
     e.preventDefault();
+    showLoginForm();
     const email = document.getElementById('login-email')?.value;
     const password = document.getElementById('login-password')?.value;
     if (!email || !password) { showToast('الرجاء إدخال البريد وكلمة المرور', 'error'); return; }
@@ -681,6 +692,7 @@ function handleLogin(e) {
 }
 function handleSignup(e) {
     e.preventDefault();
+    showSignupForm();
     const email = document.getElementById('signup-email')?.value;
     const password = document.getElementById('signup-password')?.value;
     if (!email || !password) { showToast('الرجاء إدخال البريد وكلمة المرور', 'error'); return; }
