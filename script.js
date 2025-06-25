@@ -126,7 +126,7 @@ async function initApp() {
         if (user) {
             document.getElementById('profile-name').textContent = user.displayName || "حسابي";
             await loadUserData();
-            await checkUserProfileCompletion();
+            // تم حذف checkUserProfileCompletion() هنا لمنع ظهور نافذة الإكمال تلقائي
         } else {
             document.getElementById('profile-name').textContent = "حسابي";
             renderContent();
@@ -457,7 +457,10 @@ window.cancelOrder = async function(orderId) {
 // --------- Profile ---------
 function renderProfile() {
     if (!user) return;
+    // لا تعرض أي معلومات شخصية هنا (فقط الاسم من user، الإيميل، تاريخ التسجيل)
+    // الاسم (displayName أو أول جزء من الإيميل)
     document.getElementById('profile-fullname').textContent = user.displayName || user.email.split('@')[0];
+    // لا تعرض رقم الهاتف، العنوان، ... إلخ
     document.getElementById('profile-email').textContent = user.email;
     document.getElementById('profile-date').textContent = user.metadata?.creationTime?.split(' ')[0] || "-";
     document.getElementById('profile-avatar-img').src = `https://ui-avatars.com/api/?background=3b82f6&color=fff&name=${encodeURIComponent(user.displayName || user.email.charAt(0))}`;
@@ -582,7 +585,7 @@ document.getElementById('profile-complete-form').onsubmit = async function(e){
   }, {merge:true});
   showToast("تم حفظ البيانات بنجاح","success");
   closeProfileCompleteModal();
-  renderProfile && renderProfile(); // لو عندك دالة renderProfile
+  renderProfile && renderProfile();
 };
 
 // زر "تخطي الآن"
@@ -717,8 +720,13 @@ async function handleCheckout() {
         lastOrderId = Math.floor(10000 + Math.random() * 89999);
     }
 
+    // جلب بيانات العميل من قاعدة البيانات وإرسالها مع الطلب
+    const userDoc = await getDoc(doc(db, "users", user.uid));
+    const userInfo = userDoc.exists() ? userDoc.data() : {};
+
     const order = {
         userId: user.uid,
+        userInfo, // بيانات العميل كاملة
         items: cart,
         total: total,
         total_before_discount: totalBefore,
