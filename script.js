@@ -139,16 +139,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function initApp() {
     document.body.addEventListener('click', handleGlobalClick);
 
+    // التأكد من وجود العناصر قبل ربط الأحداث (حل مشكلة الكونسول!)
     const loginBtn = document.getElementById('login-btn');
     if (loginBtn) loginBtn.addEventListener('click', handleLogin);
+
     const signupBtn = document.getElementById('signup-btn');
     if (signupBtn) signupBtn.addEventListener('click', handleSignup);
+
     const googleSigninBtn = document.getElementById('google-signin-btn');
     if (googleSigninBtn) googleSigninBtn.addEventListener('click', signInWithGoogle);
+
     const googleSignupBtn = document.getElementById('google-signup-btn');
     if (googleSignupBtn) googleSignupBtn.addEventListener('click', signInWithGoogle);
+
     const applyCouponBtn = document.getElementById('apply-coupon');
     if (applyCouponBtn) applyCouponBtn.addEventListener('click', applyCoupon);
+
     const checkoutBtn = document.getElementById('checkout-btn');
     if (checkoutBtn) checkoutBtn.addEventListener('click', handleCheckout);
 
@@ -157,6 +163,7 @@ async function initApp() {
         e.preventDefault();
         showSignupForm();
     });
+
     const showLogin = document.getElementById('show-login');
     if (showLogin) showLogin.addEventListener('click', e => {
         e.preventDefault();
@@ -165,8 +172,10 @@ async function initApp() {
 
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+
     const refreshProfileBtn = document.getElementById('refresh-profile-btn');
     if (refreshProfileBtn) refreshProfileBtn.addEventListener('click', () => { showToast('تم تحديث البيانات!', 'success'); renderProfile(); });
+
     const editProfileBtn = document.getElementById('edit-profile-btn');
     if (editProfileBtn) editProfileBtn.onclick = function() {
         checkUserProfileCompletion(true);
