@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>DZ Store - متجر إلكتروني عصري</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -30,7 +30,7 @@
   </nav>
 
   <main>
-    <!-- الصفحة الرئيسية: منتجات مميزة + ترحيب -->
+    <!-- الصفحة الرئيسية -->
     <section class="page-section" id="home-section">
       <div id="home-greeting" class="greeting"></div>
       <h1>منتجات مميزة</h1>
@@ -40,7 +40,7 @@
       </div>
     </section>
 
-    <!-- صفحة التسوق: كل المنتجات مع الفلترة والبحث -->
+    <!-- صفحة التسوق -->
     <section class="page-section" id="shop-section" style="display:none;">
       <h1>التسوق</h1>
       <div class="shop-filters">
@@ -105,11 +105,16 @@
           <p><b>الاسم:</b> <span id="profile-fullname">-</span></p>
           <p><b>البريد:</b> <span id="profile-email">-</span></p>
           <p><b>تاريخ التسجيل:</b> <span id="profile-date">-</span></p>
+          <p><b>رقم الهاتف:</b> <span id="profile-phone">-</span></p>
+          <p><b>رقم هاتف آخر:</b> <span id="profile-phone2">-</span></p>
+          <p><b>العنوان:</b> <span id="profile-address">-</span></p>
+          <p><b>مكان مميز:</b> <span id="profile-landmark">-</span></p>
           <button id="logout-btn" class="big-btn danger-btn">تسجيل الخروج</button>
         </div>
       </div>
       <div class="profile-actions">
         <button id="refresh-profile-btn" class="small-btn">تحديث البيانات</button>
+        <button id="edit-profile-btn" class="small-btn">تعديل بياناتي</button>
       </div>
     </section>
 
@@ -147,6 +152,22 @@
           تسجيل عبر Google
         </button>
         <p>لديك حساب؟ <a href="#" id="show-login">دخول</a></p>
+      </form>
+    </div>
+  </div>
+
+  <!-- نافذة إكمال البيانات الشخصية -->
+  <div id="profile-complete-modal" class="modal-bg">
+    <div class="modal-content" style="max-width:340px;">
+      <h2>أكمل بياناتك الشخصية</h2>
+      <form id="profile-complete-form" class="admin-form" style="flex-direction:column;align-items:stretch;">
+        <input id="full-name-input" type="text" placeholder="الاسم بالكامل" required>
+        <input id="phone-input" type="tel" placeholder="رقم الهاتف" required>
+        <input id="phone2-input" type="tel" placeholder="رقم هاتف آخر (اختياري)">
+        <input id="address-input" type="text" placeholder="العنوان" required>
+        <input id="landmark-input" type="text" placeholder="مكان مميز بجانب العنوان (اختياري)">
+        <button type="submit" class="big-btn gradient-btn">حفظ البيانات</button>
+        <button type="button" id="skip-profile-btn" class="small-btn" style="margin-top:0.7em;">تخطي الآن</button>
       </form>
     </div>
   </div>
