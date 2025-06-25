@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>أناقة - متجر الإكسسوارات</title>
+    <title>أناقة - متجر الأزياء</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&family=Marhey:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="style.css">
@@ -12,66 +12,66 @@
     <header class="header">
         <nav class="navbar container">
             <a href="#" class="logo">أناقة</a>
+            <div class="hamburger"><i class="fas fa-bars"></i></div>
             <ul class="nav-links">
-                <li><a href="#" class="nav-link active" data-page="home">الرئيسية</a></li>
-                <li><a href="#" class="nav-link" data-page="store">المتجر</a></li>
-                <li><a href="#" class="nav-link" data-page="wishlist">المفضلة</a></li>
-                <li><a href="#" class="nav-link" data-page="orders">طلباتي</a></li>
+                <li><a href="#home" class="nav-link active">الرئيسية</a></li>
+                <li><a href="#products" class="nav-link">المنتجات</a></li>
+                <li><a href="#cart" class="nav-link">سلة التسوق</a></li>
+                <li><a href="#orders" class="nav-link">طلباتي</a></li>
             </ul>
             <div class="nav-actions">
-                <button class="nav-icon" id="cart-btn"><i class="fas fa-shopping-cart"></i><span class="cart-count">0</span></button>
-                <div id="auth-buttons-container">
-                    <button class="cta-button cta-button-small" id="login-nav-btn">تسجيل الدخول</button>
-                </div>
-                <button class="hamburger"><i class="fas fa-bars"></i></button>
+                <button class="nav-action cart-btn"><i class="fas fa-shopping-cart"></i> <span id="cart-count">0</span></button>
+                <button class="nav-action auth-btn"><i class="fas fa-user"></i> <span id="auth-text">تسجيل الدخول</span></button>
             </div>
         </nav>
     </header>
 
     <main>
-        <section id="home-page" class="page-section active">
-            <div class="hero container">
-                <div class="hero-content">
-                    <h1>كل قطعة تحكي قصة جمالك</h1>
-                    <p>اكتشفي تشكيلتنا الفريدة من الإكسسوارات المصممة بعناية لتضيف لمسة من السحر إلى إطلالتك اليومية.</p>
-                    <a href="#" class="cta-button" data-page="store">تسوقي الآن</a>
-                </div>
-            </div>
-            <div class="featured-products-container container">
-                <h2 class="section-title">منتجات مميزة</h2>
-                <div id="featured-products-grid" class="product-grid"></div>
-                <div class="view-all-cta">
-                    <a href="#" class="cta-button" data-page="store">عرض كل المنتجات</a>
-                </div>
+        <section id="home" class="hero-section">
+            <div class="hero-content container">
+                <h1>مرحبًا بك في أناقة</h1>
+                <p>اكتشف أحدث صيحات الأزياء بأسعار تنافسية!</p>
+                <a href="#products" class="cta-button">تسوق الآن</a>
             </div>
         </section>
 
-        <section id="store-page" class="page-section">
-            <div class="store-banner container">
-                <h1>تصفحي كل المنتجات</h1>
+        <section id="featured-products" class="products-section">
+            <div class="container">
+                <h2 class="section-title">المنتجات المميزة</h2>
+                <div class="products-grid" id="featured-products-grid"></div>
             </div>
-            <div class="store-controls container">
-                <div class="categories-filter" id="categories-filter"></div>
-                <div class="sort-dropdown">
-                    <select id="sort-select">
-                        <option value="price-desc">السعر: من الأعلى للأقل</option>
-                        <option value="price-asc">السعر: من الأقل للأعلى</option>
+        </section>
+
+        <section id="products" class="products-section">
+            <div class="container">
+                <h2 class="section-title">جميع المنتجات</h2>
+                <div class="filters">
+                    <select id="category-filter">
+                        <option value="all">جميع الأقسام</option>
                     </select>
+                    <input type="text" id="search-filter" placeholder="ابحث عن منتج...">
+                </div>
+                <div class="products-grid" id="products-grid"></div>
+            </div>
+        </section>
+
+        <section id="cart" class="cart-section">
+            <div class="container">
+                <h2 class="section-title">سلة التسوق</h2>
+                <div id="cart-items"></div>
+                <div class="cart-total">
+                    <p>الإجمالي: <span id="cart-total">0.00</span> جنيه</p>
+                    <div class="coupon-section">
+                        <input type="text" id="coupon-code" placeholder="أدخل كود الخصم">
+                        <button id="apply-coupon">تطبيق</button>
+                    </div>
+                    <p>الإجمالي بعد الخصم: <span id="cart-discounted-total">0.00</span> جنيه</p>
+                    <button class="cta-button" id="checkout-btn">إتمام الطلب</button>
                 </div>
             </div>
-            <div class="container">
-                <div id="product-grid" class="product-grid"></div>
-            </div>
         </section>
 
-        <section id="wishlist-page" class="page-section">
-            <div class="container">
-                <h2 class="section-title">قائمة مفضلاتي</h2>
-                <div id="wishlist-grid" class="product-grid"></div>
-            </div>
-        </section>
-
-        <section id="orders-page" class="page-section">
+        <section id="orders" class="orders-section">
             <div class="container">
                 <h2 class="section-title">طلباتي</h2>
                 <div id="orders-list"></div>
@@ -79,112 +79,41 @@
         </section>
     </main>
 
-    <footer class="footer">
-        <div class="footer-grid container">
-            <div class="footer-col">
-                <h3>أناقة</h3>
-                <p>متجرك الأول لكل ما هو فريد وجميل في عالم إكسسوارات البنات.</p>
-                <div class="social-links">
-                    <a href="#"><i class="fab fa-instagram"></i></a>
-                    <a href="#"><i class="fab fa-whatsapp"></i></a>
-                </div>
-            </div>
-            <div class="footer-col">
-                <h3>روابط سريعة</h3>
-                <ul>
-                    <li><a href="#" data-page="home">الرئيسية</a></li>
-                    <li><a href="#" data-page="store">المتجر</a></li>
-                    <li><a href="#" data-page="wishlist">المفضلة</a></li>
-                    <li><a href="#" data-page="orders">طلباتي</a></li>
-                </ul>
-            </div>
-            <div class="footer-col">
-                <h3>تواصل معنا</h3>
-                <p><i class="fas fa-phone"></i> 0123456789</p>
-                <p><i class="fas fa-envelope"></i> info@anaqa.com</p>
-            </div>
-        </div>
-        <div class="footer-bottom">
-            <p>© <span id="copyright-year"></span> متجر أناقة. جميع الحقوق محفوظة.</p>
-        </div>
-    </footer>
-
-    <div class="modal" id="product-detail-modal">
-        <div class="modal-content">
-            <span class="close-modal">×</span>
-            <div id="product-detail-content"></div>
-        </div>
-    </div>
-
-    <div class="cart-overlay" id="cart-overlay"></div>
-    <div class="cart-sidebar" id="cart-sidebar">
-        <div class="cart-header">
-            <h3>سلة التسوق</h3>
-            <button class="close-cart-btn">×</button>
-        </div>
-        <div class="cart-items" id="cart-items"></div>
-        <div class="cart-footer">
-            <div class="coupon-form">
-                <input type="text" id="coupon-input" placeholder="أدخل كود الخصم">
-                <button id="apply-coupon-btn">تطبيق</button>
-            </div>
-            <div class="cart-summary">
-                <div class="summary-row">
-                    <span>المجموع الفرعي</span>
-                    <span id="cart-subtotal">0.00 جنيه</span>
-                </div>
-                <div class="summary-row discount" id="discount-row">
-                    <span>الخصم</span>
-                    <span id="cart-discount">0.00 جنيه</span>
-                </div>
-                <div class="summary-row total">
-                    <span>الإجمالي النهائي</span>
-                    <span id="cart-total">0.00 جنيه</span>
-                </div>
-            </div>
-            <button class="checkout-btn">إتمام الشراء</button>
-        </div>
-    </div>
-
-    <div class="auth-modal" id="auth-modal">
+    <div id="auth-modal" class="auth-modal">
         <div class="auth-container">
-            <button class="close-auth-modal">×</button>
+            <a href="#" class="logo">أناقة</a>
             <div id="login-form">
                 <h2>تسجيل الدخول</h2>
-                <form>
-                    <div class="form-group">
-                        <input type="email" id="login-email" placeholder="البريد الإلكتروني" required>
-                    </div>
-                    <div class="form-group">
-                        <input type="password" id="login-password" placeholder="كلمة المرور" required>
-                    </div>
-                    <button type="submit" class="cta-button">دخول</button>
-                </form>
+                <div class="form-group">
+                    <input type="email" id="login-email" placeholder="البريد الإلكتروني" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="login-password" placeholder="كلمة المرور" required>
+                </div>
+                <button type="submit" class="cta-button" id="login-btn">دخول</button>
                 <div class="social-login">
                     <p>أو سجل الدخول عبر</p>
                     <button class="social-btn google" id="google-signin-btn"><i class="fab fa-google"></i> Google</button>
-                    <button class="social-btn facebook" id="facebook-signin-btn"><i class="fab fa-facebook-f"></i> Facebook</button>
                 </div>
                 <div class="auth-toggle">
                     ليس لديك حساب؟ <a href="#" id="show-signup">أنشئ حساباً جديداً</a>
                 </div>
             </div>
-            <div id="signup-form" style="display: none;">
-                <h2>إنشاء حساب جديد</h2>
-                <form>
-                    <div class="form-group">
-                        <input type="email" id="signup-email" placeholder="البريد الإلكتروني" required>
-                    </div>
-                    <div class="form-group">
-                        <input type="password" id="signup-password" placeholder="كلمة المرور" required>
-                    </div>
-                    <div class="form-group">
-                        <input type="password" id="signup-password-confirm" placeholder="تأكيد كلمة المرور" required>
-                    </div>
-                    <button type="submit" class="cta-button">إنشاء حساب</button>
-                </form>
+            <div id="signup-form" class="hidden">
+                <h2>إنشاء حساب</h2>
+                <div class="form-group">
+                    <input type="email" id="signup-email" placeholder="البريد الإلكتروني" required>
+                </div>
+                <div class="form-group">
+                    <input type="password" id="signup-password" placeholder="كلمة المرور" required>
+                </div>
+                <button type="submit" class="cta-button" id="signup-btn">إنشاء حساب</button>
+                <div class="social-login">
+                    <p>أو أنشئ حساب عبر</p>
+                    <button class="social-btn google" id="google-signup-btn"><i class="fab fa-google"></i> Google</button>
+                </div>
                 <div class="auth-toggle">
-                    لديك حساب بالفعل؟ <a href="#" id="show-login">قم بتسجيل الدخول</a>
+                    لديك حساب؟ <a href="#" id="show-login">تسجيل الدخول</a>
                 </div>
             </div>
         </div>
