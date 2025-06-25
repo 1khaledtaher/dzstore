@@ -302,6 +302,31 @@ main {
   to   { opacity: 0.96; transform: translateY(0);}
 }
 
+.coupon-btn {
+  background: linear-gradient(90deg, #34d399 40%, #3b82f6 100%);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.5em 2.4em 0.5em 1.1em;
+  font-size: 1.09em;
+  font-weight: bold;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7em;
+  transition: background .19s, transform .15s;
+  margin-right: 0.7em;
+}
+.coupon-btn:hover, .coupon-btn:focus {
+  background: linear-gradient(90deg, #059669 30%, #2563eb 100%);
+  transform: scale(1.05);
+}
+.coupon-btn svg {
+  vertical-align: middle;
+  display: inline;
+}
+
 #auth-modal {
   background: rgba(34,34,59,0.19);
   position: fixed;
