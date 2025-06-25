@@ -1,4 +1,4 @@
-// DZ Store - نسخة كاملة متكاملة مع جميع الدوال وتصحيح التعامل مع العناصر
+// DZ Store - النسخة المعدلة: زر نحن، تحميل المنتجات دائماً، إصلاح التسجيل، ترتيب الطلبات، وكل طلباتك الأخيرة
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
@@ -63,134 +63,66 @@ function route() {
 window.addEventListener('hashchange', route);
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const loadingOverlay = document.getElementById('loading-overlay');
-    if (loadingOverlay) loadingOverlay.style.display = "flex";
+    document.getElementById('loading-overlay').style.display = "flex";
     await loadProducts();
     await loadCategories();
     renderFeaturedProducts();
     renderShop();
     firstLoadDone = true;
-    if (loadingOverlay) loadingOverlay.style.display = "none";
+    document.getElementById('loading-overlay').style.display = "none";
 
     await initApp();
     route();
 
     const hamburger = document.querySelector('.hamburger');
-    if (hamburger) {
-      hamburger.addEventListener('click', () => {
-        const navLinks = document.querySelector('.nav-links');
-        if (navLinks) navLinks.classList.toggle('open');
-      });
-    }
+    hamburger.addEventListener('click', () => {
+      document.querySelector('.nav-links').classList.toggle('open');
+    });
     document.body.addEventListener('click', function(e) {
       if (window.innerWidth < 800 && !e.target.closest('.nav-links') && !e.target.classList.contains('hamburger')) {
-        const navLinks = document.querySelector('.nav-links');
-        if (navLinks) navLinks.classList.remove('open');
+        document.querySelector('.nav-links').classList.remove('open');
       }
     });
-
-    const closeProductModalBtn = document.getElementById('close-product-modal');
-    if (closeProductModalBtn) closeProductModalBtn.onclick = closeProductModal;
-    const modalAddCartBtn = document.getElementById('modal-add-cart');
-    if (modalAddCartBtn) modalAddCartBtn.onclick = () => addToCart(modalCurrentProductId, true);
-    const modalAddFavBtn = document.getElementById('modal-add-fav');
-    if (modalAddFavBtn) modalAddFavBtn.onclick = modalFavHandler;
-    const showAllFeaturedBtn = document.getElementById('show-all-featured');
-    if (showAllFeaturedBtn) showAllFeaturedBtn.onclick = () => { location.hash = "#shop"; };
-    const shopCategoryFilter = document.getElementById('shop-category-filter');
-    if (shopCategoryFilter) shopCategoryFilter.onchange = renderShop;
-    const shopSortFilter = document.getElementById('shop-sort-filter');
-    if (shopSortFilter) shopSortFilter.onchange = renderShop;
-    const shopTypeFilter = document.getElementById('shop-type-filter');
-    if (shopTypeFilter) shopTypeFilter.onchange = renderShop;
-    const shopSearchFilter = document.getElementById('shop-search-filter');
-    if (shopSearchFilter) shopSearchFilter.oninput = renderShop;
-
-    // نافذة إكمال البيانات
-    const profileCompleteForm = document.getElementById('profile-complete-form');
-    if (profileCompleteForm) {
-        profileCompleteForm.onsubmit = async function(e){
-            e.preventDefault();
-            const fullName = document.getElementById('full-name-input').value.trim();
-            const phone = document.getElementById('phone-input').value.trim();
-            const phone2 = document.getElementById('phone2-input').value.trim();
-            const address = document.getElementById('address-input').value.trim();
-            const landmark = document.getElementById('landmark-input').value.trim();
-            if (!fullName || !phone || !address) {
-                showToast("يرجى ملء جميع الحقول الإجبارية","error");
-                return;
-            }
-            await setDoc(doc(db, "users", user.uid), {
-                fullName, phone, phone2, address, landmark,
-                email: user.email,
-                displayName: user.displayName || fullName
-            }, {merge:true});
-            showToast("تم حفظ البيانات بنجاح","success");
-            closeProfileCompleteModal();
-            renderProfile && renderProfile();
-        };
-    }
-    const skipProfileBtn = document.getElementById('skip-profile-btn');
-    if (skipProfileBtn) skipProfileBtn.onclick = function() {
-        closeProfileCompleteModal();
-    };
+    document.getElementById('close-product-modal').onclick = closeProductModal;
+    document.getElementById('modal-add-cart').onclick = () => addToCart(modalCurrentProductId, true);
+    document.getElementById('modal-add-fav').onclick = modalFavHandler;
+    document.getElementById('show-all-featured').onclick = () => { location.hash = "#shop"; };
+    document.getElementById('shop-category-filter').onchange = renderShop;
+    document.getElementById('shop-sort-filter').onchange = renderShop;
+    document.getElementById('shop-type-filter').onchange = renderShop;
+    document.getElementById('shop-search-filter').oninput = renderShop;
 });
 
 async function initApp() {
     document.body.addEventListener('click', handleGlobalClick);
 
-    // التأكد من وجود العناصر قبل ربط الأحداث (حل مشكلة الكونسول!)
-    const loginBtn = document.getElementById('login-btn');
-    if (loginBtn) loginBtn.addEventListener('click', handleLogin);
+    document.getElementById('login-btn').addEventListener('click', handleLogin);
+    document.getElementById('signup-btn').addEventListener('click', handleSignup);
+    document.getElementById('google-signin-btn').addEventListener('click', signInWithGoogle);
+    document.getElementById('google-signup-btn').addEventListener('click', signInWithGoogle);
+    document.getElementById('apply-coupon').addEventListener('click', applyCoupon);
+    document.getElementById('checkout-btn').addEventListener('click', handleCheckout);
 
-    const signupBtn = document.getElementById('signup-btn');
-    if (signupBtn) signupBtn.addEventListener('click', handleSignup);
-
-    const googleSigninBtn = document.getElementById('google-signin-btn');
-    if (googleSigninBtn) googleSigninBtn.addEventListener('click', signInWithGoogle);
-
-    const googleSignupBtn = document.getElementById('google-signup-btn');
-    if (googleSignupBtn) googleSignupBtn.addEventListener('click', signInWithGoogle);
-
-    const applyCouponBtn = document.getElementById('apply-coupon');
-    if (applyCouponBtn) applyCouponBtn.addEventListener('click', applyCoupon);
-
-    const checkoutBtn = document.getElementById('checkout-btn');
-    if (checkoutBtn) checkoutBtn.addEventListener('click', handleCheckout);
-
-    const showSignup = document.getElementById('show-signup');
-    if (showSignup) showSignup.addEventListener('click', e => {
+    document.getElementById('show-signup').addEventListener('click', e => {
         e.preventDefault();
         showSignupForm();
     });
-
-    const showLogin = document.getElementById('show-login');
-    if (showLogin) showLogin.addEventListener('click', e => {
+    document.getElementById('show-login').addEventListener('click', e => {
         e.preventDefault();
         showLoginForm();
     });
 
-    const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
-
-    const refreshProfileBtn = document.getElementById('refresh-profile-btn');
-    if (refreshProfileBtn) refreshProfileBtn.addEventListener('click', () => { showToast('تم تحديث البيانات!', 'success'); renderProfile(); });
-
-    const editProfileBtn = document.getElementById('edit-profile-btn');
-    if (editProfileBtn) editProfileBtn.onclick = function() {
-        checkUserProfileCompletion(true);
-    };
+    document.getElementById('logout-btn').addEventListener('click', handleLogout);
+    document.getElementById('refresh-profile-btn').addEventListener('click', () => { showToast('تم تحديث البيانات!', 'success'); renderProfile(); });
 
     onAuthStateChanged(auth, async (currentUser) => {
         user = currentUser;
         updateAuthUI();
         if (user) {
-            const profileName = document.getElementById('profile-name');
-            if (profileName) profileName.textContent = user.displayName || "حسابي";
+            document.getElementById('profile-name').textContent = user.displayName || "حسابي";
             await loadUserData();
         } else {
-            const profileName = document.getElementById('profile-name');
-            if (profileName) profileName.textContent = "حسابي";
+            document.getElementById('profile-name').textContent = "حسابي";
             renderContent();
         }
         route();
@@ -278,7 +210,7 @@ function renderContent() {
     renderGreeting();
 }
 
-// --------- Products & Shop ----------
+// --------- Featured Products ----------
 function renderFeaturedProducts() {
     const container = document.getElementById('featured-products-grid');
     if (!container) return;
@@ -290,6 +222,7 @@ function renderFeaturedProducts() {
         : featuredProducts.map(product => makeProductCard(product, true)).join('');
 }
 
+// --------- Shop Page ----------
 function renderShop() {
     const grid = document.getElementById('shop-products-grid');
     if (!grid) return;
@@ -304,20 +237,23 @@ function renderShop() {
     }
 
     let filteredProducts = [...products];
-    if (catSelect && catSelect.value !== "all") filteredProducts = filteredProducts.filter(p => p.category === catSelect.value);
+    if (catSelect.value !== "all") filteredProducts = filteredProducts.filter(p => p.category === catSelect.value);
 
-    const q = (searchInput && searchInput.value || "").toLowerCase().trim();
+    // بحث fuzzy بسيط
+    const q = (searchInput.value || "").toLowerCase().trim();
     if (q.length) {
         filteredProducts = filteredProducts.filter(product => fuzzyMatch(product.name, q) || fuzzyMatch(product.desc || "", q));
     }
 
-    if (sortSelect && sortSelect.value === "price-high") {
+    // ترتيب
+    if (sortSelect.value === "price-high") {
         filteredProducts.sort((a, b) => (b.price || 0) - (a.price || 0));
-    } else if (sortSelect && sortSelect.value === "price-low") {
+    } else if (sortSelect.value === "price-low") {
         filteredProducts.sort((a, b) => (a.price || 0) - (b.price || 0));
     }
 
-    if (typeSelect && typeSelect.value === "categories") {
+    // نوع العرض
+    if (typeSelect.value === "categories") {
         grid.innerHTML = categories.map(cat => {
             const items = filteredProducts.filter(p => p.category === cat.id);
             if (!items.length) return '';
@@ -336,6 +272,8 @@ function renderShop() {
             : filteredProducts.map(product => makeProductCard(product, false)).join('');
     }
 }
+
+// --------- Products Card + Fuzzy Match ----------
 function makeProductCard(product, isFeatured = false) {
     const isFav = favorites.some(f => f === product.id);
     return `
@@ -419,7 +357,7 @@ function updateCartTotal() {
         const product = products.find(p => p.id === item.id);
         return sum + (product ? product.price * item.quantity : 0);
     }, 0);
-    if (totalElement) totalElement.textContent = total.toFixed(2);
+    totalElement.textContent = total.toFixed(2);
 
     const couponCode = document.getElementById('coupon-code')?.value?.toUpperCase() || "";
     let discountedTotal = total;
@@ -432,13 +370,11 @@ function updateCartTotal() {
             discountedTotal = Math.max(discountedTotal, 0);
         }
     }
-    if (discountedTotalElement) discountedTotalElement.textContent = discountedTotal.toFixed(2);
-    if (discountRow) {
-        if (discountedTotal < total) {
-            discountRow.style.display = '';
-        } else {
-            discountRow.style.display = 'none';
-        }
+    discountedTotalElement.textContent = discountedTotal.toFixed(2);
+    if (discountedTotal < total) {
+        discountRow.style.display = '';
+    } else {
+        discountRow.style.display = 'none';
     }
 }
 function updateCartUI() {
@@ -467,6 +403,7 @@ function renderOrders() {
         container.innerHTML = '<p class="empty-message">لا توجد طلبات حاليًا.</p>';
         return;
     }
+    // ترتيب: الطلبات غير الملغية (الأحدث فالأقدم) ثم الملغية (الأقدم فالأحدث)
     const activeStatuses = ["review", "shipping", "delivered", "returned"];
     const activeOrders = orders.filter(o => !o.status || activeStatuses.includes(o.status));
     const cancelledOrders = orders.filter(o => o.status === "cancelled");
@@ -519,8 +456,7 @@ function renderProfile() {
     document.getElementById('profile-date').textContent = user.metadata?.creationTime?.split(' ')[0] || "-";
     document.getElementById('profile-avatar-img').src = `https://ui-avatars.com/api/?background=3b82f6&color=fff&name=${encodeURIComponent(user.displayName || user.email.charAt(0))}`;
     if (user.providerData.some(p => p.providerId === "google.com")) {
-        const refreshProfileBtn = document.getElementById('refresh-profile-btn');
-        if (refreshProfileBtn) refreshProfileBtn.style.display = "";
+        document.getElementById('refresh-profile-btn').style.display = "";
         const changePassBtn = document.getElementById('change-password-btn');
         if (changePassBtn) changePassBtn.style.display = "none";
     }
@@ -580,8 +516,7 @@ function openProductModal(productId) {
     modal.classList.add('open');
 }
 function closeProductModal() {
-    const modal = document.getElementById('product-modal');
-    if (modal) modal.classList.remove('open');
+    document.getElementById('product-modal').classList.remove('open');
     modalCurrentProductId = null;
 }
 function updateModalFavBtn() {
@@ -590,34 +525,6 @@ function updateModalFavBtn() {
     const isFav = favorites.includes(modalCurrentProductId);
     btn.innerHTML = isFav ? "★ تمت الإضافة للمفضلة" : "☆ أضف للمفضلة";
     btn.classList.toggle("fav", isFav);
-}
-
-// --------- بيانات المستخدم الشخصية ---------
-function showProfileCompleteModal(data = {}) {
-  const modal = document.getElementById('profile-complete-modal');
-  if (!modal) return;
-  modal.style.display = "flex";
-  document.getElementById('full-name-input').value = data.fullName || "";
-  document.getElementById('phone-input').value = data.phone || "";
-  document.getElementById('phone2-input').value = data.phone2 || "";
-  document.getElementById('address-input').value = data.address || "";
-  document.getElementById('landmark-input').value = data.landmark || "";
-}
-function closeProfileCompleteModal() {
-  const modal = document.getElementById('profile-complete-modal');
-  if (modal) modal.style.display = "none";
-}
-async function checkUserProfileCompletion(forceShow = false) {
-  if (!user) return false;
-  const userDoc = await getDoc(doc(db, "users", user.uid));
-  let data = userDoc.exists() ? userDoc.data() : {};
-  let requiredFields = ["fullName", "phone", "address"];
-  let incomplete = requiredFields.some(f => !data[f] || !data[f].trim());
-  if (incomplete || forceShow) {
-    showProfileCompleteModal(data);
-    return false;
-  }
-  return true;
 }
 
 // --------- Cart/Fav DB ----------
@@ -711,11 +618,6 @@ function applyCoupon() {
 // --------- Checkout ----------
 async function handleCheckout() {
     if (!user) { openAuthModal(); showToast('سجّل الدخول أولاً لإتمام الطلب', 'error'); return; }
-    let ok = await checkUserProfileCompletion();
-    if (!ok) {
-      showToast("يجب إكمال بياناتك الشخصية لإتمام الطلب","error");
-      return;
-    }
     if (!cart.length) { showToast('سلة التسوق فارغة', 'error'); return; }
     const now = Date.now();
     if (now - lastOrderTime < 60000) {
@@ -748,13 +650,8 @@ async function handleCheckout() {
         lastOrderId = Math.floor(10000 + Math.random() * 89999);
     }
 
-    // جلب بيانات العميل من قاعدة البيانات وإرسالها مع الطلب
-    const userDoc = await getDoc(doc(db, "users", user.uid));
-    const userInfo = userDoc.exists() ? userDoc.data() : {};
-
     const order = {
         userId: user.uid,
-        userInfo, // بيانات العميل كاملة
         items: cart,
         total: total,
         total_before_discount: totalBefore,
@@ -839,16 +736,12 @@ function closeAuthModal() {
     if (authModal) authModal.classList.remove('open');
 }
 function showSignupForm() {
-    const loginForm = document.getElementById('login-form');
-    const signupForm = document.getElementById('signup-form');
-    if (loginForm) loginForm.classList.add('hidden');
-    if (signupForm) signupForm.classList.remove('hidden');
+    document.getElementById('login-form').classList.add('hidden');
+    document.getElementById('signup-form').classList.remove('hidden');
 }
 function showLoginForm() {
-    const loginForm = document.getElementById('login-form');
-    const signupForm = document.getElementById('signup-form');
-    if (loginForm) loginForm.classList.remove('hidden');
-    if (signupForm) signupForm.classList.add('hidden');
+    document.getElementById('login-form').classList.remove('hidden');
+    document.getElementById('signup-form').classList.add('hidden');
 }
 
 // --------- Toast ---------
