@@ -114,6 +114,11 @@ async function initApp() {
 
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
     document.getElementById('refresh-profile-btn').addEventListener('click', () => { showToast('تم تحديث البيانات!', 'success'); renderProfile(); });
+    if (document.getElementById('edit-profile-btn')) {
+      document.getElementById('edit-profile-btn').onclick = function() {
+        checkUserProfileCompletion(true);
+      };
+    }
 
     onAuthStateChanged(auth, async (currentUser) => {
         user = currentUser;
@@ -546,11 +551,6 @@ function closeProfileCompleteModal() {
 
 // دالة لفحص البيانات الشخصية
 async function checkUserProfileCompletion(forceShow = false) {
-  let ok = await checkUserProfileCompletion();
-  if (!ok) {
-    showToast("يجب إكمال بياناتك الشخصية لإتمام الطلب","error");
-    return;
-  }  
   if (!user) return false;
   const userDoc = await getDoc(doc(db, "users", user.uid));
   let data = userDoc.exists() ? userDoc.data() : {};
@@ -680,6 +680,11 @@ function applyCoupon() {
 // --------- Checkout ----------
 async function handleCheckout() {
     if (!user) { openAuthModal(); showToast('سجّل الدخول أولاً لإتمام الطلب', 'error'); return; }
+    let ok = await checkUserProfileCompletion();
+    if (!ok) {
+      showToast("يجب إكمال بياناتك الشخصية لإتمام الطلب","error");
+      return;
+    }
     if (!cart.length) { showToast('سلة التسوق فارغة', 'error'); return; }
     const now = Date.now();
     if (now - lastOrderTime < 60000) {
