@@ -1,15 +1,16 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, FacebookAuthProvider } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
-import { getFirestore, collection, getDocs, addDoc, doc, updateDoc, arrayUnion, arrayRemove, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, addDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
+// Firebase Configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyBV_kaqlAtLTBNEcIHpc0rWHTbWXdgsXME",
-    authDomain: "store-b5352.firebaseapp.com",
-    projectId: "store-b5352",
-    storageBucket: "store-b5352.firebasestorage.app",
-    messagingSenderId: "994825915869",
-    appId: "1:994825915869:web:57e664699a45b3d2fa3a34",
-    measurementId: "G-KGZHS02V07"
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID",
+    measurementId: "YOUR_MEASUREMENT_ID"
 };
 
 // Initialize Firebase
@@ -18,24 +19,27 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // Global State
-let allProducts = [];
+let user = null;
+let products = [];
 let categories = [];
-let wishlist = [];
-let cart = JSON.parse(localStorage.getItem('anaqaCart')) || [];
-let orders = [];
+let cart = [];
 let coupons = {};
-let appliedCoupon = null;
-let currentUser = null;
+let orders = [];
 
 // DOM Initialization
 document.addEventListener('DOMContentLoaded', () => {
     initApp();
-    setupAuthListeners();
 });
 
 function initApp() {
     const body = document.body;
     if (body) body.addEventListener('click', handleGlobalClick);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('auth') === 'login') {
+        openAuthModal();
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
 
     const hamburger = document.querySelector('.hamburger');
     if (hamburger) {
@@ -45,115 +49,191 @@ function initApp() {
         });
     }
 
-    const cartBtn = document.getElementById('cart-btn');
-    if (cartBtn) cartBtn.addEventListener('click', openCart);
+    const loginBtn = document.getElementById('login-btn');
+    if (loginBtn) loginBtn.addEventListener('click', handleLogin);
 
-    const closeCartBtn = document.getElementById('close-cart-btn');
-    if (closeCartBtn) closeCartBtn.addEventListener('click', closeCart);
-
-    const cartOverlay = document.getElementById('cart-overlay');
-    if (cartOverlay) cartOverlay.addEventListener('click', closeCart);
-
-    const applyCouponBtn = document.getElementById('apply-coupon-btn');
-    if (applyCouponBtn) applyCouponBtn.addEventListener('click', applyCoupon);
-
-    const sortSelect = document.getElementById('sort-select');
-    if (sortSelect) sortSelect.addEventListener('change', filterAndSortProducts);
-
-    const copyrightYear = document.getElementById('copyright-year');
-    if (copyrightYear) copyrightYear.textContent = new Date().getFullYear();
-
-    const detailModal = document.getElementById('product-detail-modal');
-    if (detailModal) {
-        detailModal.addEventListener('click', (e) => {
-            if (e.target.classList.contains('close-modal') || e.target.id === 'product-detail-modal') {
-                closeProductModal();
-            }
-        });
-    }
-
-    const checkoutBtn = document.querySelector('.checkout-btn');
-    if (checkoutBtn) checkoutBtn.addEventListener('click', handleCheckout);
-}
-
-// Authentication Logic
-function setupAuthListeners() {
-    onAuthStateChanged(auth, async (user) => {
-        const authButtonsContainer = document.getElementById('auth-buttons-container');
-        if (!authButtonsContainer) return;
-
-        if (user) {
-            currentUser = {
-                uid: user.uid,
-                email: user.email,
-                displayName: user.displayName,
-            };
-            authButtonsContainer.innerHTML = `<button class="cta-button cta-button-small" id="logout-nav-btn">خروج</button>`;
-            const logoutBtn = document.getElementById('logout-nav-btn');
-            if (logoutBtn) logoutBtn.addEventListener('click', () => auth.signOut());
-            showToast(`أهلاً بك ${user.displayName || user.email}`, 'success');
-            await loadUserData(user.uid);
-        } else {
-            currentUser = null;
-            authButtonsContainer.innerHTML = `<button class="cta-button cta-button-small" id="login-nav-btn">تسجيل الدخول</button>`;
-            const loginBtn = document.getElementById('login-nav-btn');
-            if (loginBtn) loginBtn.addEventListener('click', openAuthModal);
-            wishlist = [];
-            orders = [];
-            renderAllContent();
-        }
-    });
-
-    const closeAuthModalBtn = document.querySelector('.close-auth-modal');
-    if (closeAuthModalBtn) closeAuthModalBtn.addEventListener('click', closeAuthModal);
-
-    const showSignup = document.getElementById('show-signup');
-    if (showSignup) {
-        showSignup.addEventListener('click', (e) => {
-            e.preventDefault();
-            const loginForm = document.getElementById('login-form');
-            const signupForm = document.getElementById('signup-form');
-            if (loginForm && signupForm) {
-                loginForm.style.display = 'none';
-                signupForm.style.display = 'block';
-            }
-        });
-    }
-
-    const showLogin = document.getElementById('show-login');
-    if (showLogin) {
-        showLogin.addEventListener('click', (e) => {
-            e.preventDefault();
-            const loginForm = document.getElementById('login-form');
-            const signupForm = document.getElementById('signup-form');
-            if (loginForm && signupForm) {
-                signupForm.style.display = 'none';
-                loginForm.style.display = 'block';
-            }
-        });
-    }
-
-    const loginForm = document.querySelector('#login-form form');
-    if (loginForm) loginForm.addEventListener('submit', handleLogin);
-
-    const signupForm = document.querySelector('#signup-form form');
-    if (signupForm) signupForm.addEventListener('submit', handleSignup);
+    const signupBtn = document.getElementById('signup-btn');
+    if (signupBtn) signupBtn.addEventListener('click', handleSignup);
 
     const googleSignInBtn = document.getElementById('google-signin-btn');
     if (googleSignInBtn) googleSignInBtn.addEventListener('click', signInWithGoogle);
 
-    const facebookSignInBtn = document.getElementById('facebook-signin-btn');
-    if (facebookSignInBtn) facebookSignInBtn.addEventListener('click', signInWithFacebook);
+    const googleSignUpBtn = document.getElementById('google-signup-btn');
+    if (googleSignUpBtn) googleSignUpBtn.addEventListener('click', signInWithGoogle);
+
+    const applyCouponBtn = document.getElementById('apply-coupon');
+    if (applyCouponBtn) applyCouponBtn.addEventListener('click', applyCoupon);
+
+    const checkoutBtn = document.getElementById('checkout-btn');
+    if (checkoutBtn) checkoutBtn.addEventListener('click', handleCheckout);
+
+    onAuthStateChanged(auth, (currentUser) => {
+        user = currentUser;
+        updateAuthUI();
+        if (user) {
+            loadUserData();
+            if (['YOUR_ADMIN_UID'].includes(user.uid)) {
+                window.location.href = "admin.html";
+            }
+        } else {
+            renderContent();
+        }
+    });
 }
 
-function openAuthModal() {
-    const authModal = document.getElementById('auth-modal');
-    if (authModal) authModal.classList.add('open');
+function updateAuthUI() {
+    const authText = document.getElementById('auth-text');
+    const authBtn = document.querySelector('.auth-btn');
+    if (authText && authBtn) {
+        if (user) {
+            authText.textContent = 'تسجيل الخروج';
+            authBtn.addEventListener('click', handleLogout);
+        } else {
+            authText.textContent = 'تسجيل الدخول';
+            authBtn.addEventListener('click', openAuthModal);
+        }
+    }
 }
 
-function closeAuthModal() {
-    const authModal = document.getElementById('auth-modal');
-    if (authModal) authModal.classList.remove('open');
+async function loadUserData() {
+    await loadProducts();
+    await loadCategories();
+    await loadCoupons();
+    await loadOrders();
+    loadCart();
+    renderContent();
+}
+
+async function loadProducts() {
+    products = [];
+    const querySnapshot = await getDocs(collection(db, "products"));
+    querySnapshot.forEach(doc => {
+        products.push({ id: doc.id, ...doc.data() });
+    });
+}
+
+async function loadCategories() {
+    categories = [];
+    const querySnapshot = await getDocs(collection(db, "categories"));
+    querySnapshot.forEach(doc => {
+        categories.push({ id: doc.id, ...doc.data() });
+    });
+}
+
+async function loadCoupons() {
+    coupons = {};
+    const querySnapshot = await getDocs(collection(db, "coupons"));
+    querySnapshot.forEach(doc => {
+        coupons[doc.id] = { id: doc.id, ...doc.data() };
+    });
+}
+
+async function loadOrders() {
+    if (!user) return;
+    orders = [];
+    const querySnapshot = await getDocs(collection(db, "orders"));
+    querySnapshot.forEach(doc => {
+        if (doc.data().userId === user.uid) {
+            orders.push({ id: doc.id, ...doc.data() });
+        }
+    });
+}
+
+function loadCart() {
+    cart = JSON.parse(localStorage.getItem('cart')) || [];
+    updateCartUI();
+}
+
+function renderContent() {
+    renderFeaturedProducts();
+    renderProducts();
+    renderCategories();
+    renderCart();
+    renderOrders();
+}
+
+function renderFeaturedProducts() {
+    const container = document.getElementById('featured-products-grid');
+    if (!container) return;
+    const featuredProducts = products.filter(p => p.featured);
+    container.innerHTML = featuredProducts.length === 0
+        ? '<p class="empty-message">لا توجد منتجات مميزة حاليًا.</p>'
+        : featuredProducts.map(product => `
+            <div class="product-card featured">
+                <img src="${product.img}" alt="${product.name}">
+                <h3>${product.name}</h3>
+                <p>${product.desc || ''}</p>
+                <p class="price">${product.price} جنيه</p>
+                <button class="cta-button add-to-cart" data-product-id="${product.id}">أضف إلى السلة</button>
+            </div>`).join('');
+}
+
+function renderProducts() {
+    const container = document.getElementById('products-grid');
+    if (!container) return;
+    const categoryFilter = document.getElementById('category-filter')?.value || 'all';
+    const searchFilter = document.getElementById('search-filter')?.value.toLowerCase() || '';
+    const filteredProducts = products.filter(product => 
+        (categoryFilter === 'all' || product.category && product.category === categoryFilter) &&
+        (product.name.toLowerCase().includes(searchFilter) || (product.desc && product.description)?.toLowerCase().includes(searchFilter))
+    );
+    container.innerHTML = filteredProducts.length === 0
+        ? '<p class="empty-message">لا توجد منتجات متاحة.</p>'
+        : filteredProducts.map(product => `
+            <div class="product-card">
+                <img src="${product.img}" alt="${product.name}">
+                <h3>${product.name}</h3>
+                <p>${product.desc || ''}</p>
+                <p class="price">${product.price} جنيه</p>
+                <button class="cta-button add-to-cart-btn" data-product-id="${product.id}"">أضف إلى السلة</button>
+            </div>`).join('');
+}
+
+function renderCategories() {
+    const categoryFilter = document.getElementById('category-filter');
+    if (!categoryFilter) return;
+    categoryFilter.innerHTML = '<option value="all">جميع الأقسام</option>' +
+        categories.map(category => `<option value="${category.id}">${category.name}</option>`).join('');
+}
+
+function renderCart() {
+    const container = document.getElementById('cart-items');
+    if (!container) return;
+    container.innerHTML = cart.length === 0
+        ? '<p class="empty-message">السلة فارغة.</p>'
+        : cart.map(item => {
+            const product = products.find(p => p.id === item.id);
+            if (!product) return '';
+            return `
+                <div class="cart-item">
+                    <img src="${product.img}" alt="${product.name}">
+                    <div class="cart-item-details">
+                        <h3>${product.name}</h3>
+                        <p>السعر: ${product.price} جنيه</p>
+                        <div class="quantity-controls">
+                            <button class="quantity-btn" data-product-id="${product.id}" data-action="decrease">-</button>
+                            <span class="quantity">${item.quantity}</span>
+                            <button class="quantity-btn" data-product-id="${product.id}" data-action="increase">+</button>
+                        </div>
+                    </div>
+                    <button class="remove-from-cart" data-product-id="${product.id}" data-product-id="${product.id}">إزالة</button>
+                </div>
+            `;
+        }).join('');
+
+    updateCartTotal();
+}
+
+function updateCartTotal() {
+    const totalElement = document.getElementById('cart-total');
+    const discountedTotalElement = document.getElementById('cart-total-total');
+    if (!totalElement || !discountedTotalElement) return;
+    let total = cart.reduce((sum, item) => {
+        const product = products.find(p => p.id === item.id);
+        return sum + (product ? product.price * item.quantity : 0);
+    }, 0);
+    totalElement.textContent = total.toFixed(2);
+    discountedTotalElement.textContent = total.toFixed(2); // Update with coupon logic if needed
 }
 
 function handleLogin(e) {
@@ -176,27 +256,14 @@ function handleSignup(e) {
     e.preventDefault();
     const email = document.getElementById('signup-email')?.value;
     const password = document.getElementById('signup-password')?.value;
-    const confirmPassword = document.getElementById('signup-password-confirm')?.value;
-
-    if (!email || !password || !confirmPassword) {
-        showToast('الرجاء ملء جميع الحقول', 'error');
+    if (!email || !password) {
+        showToast('الرجاء إدخال البريد الإلكتروني وكلمة المرور', 'error');
         return;
     }
-
-    if (password !== confirmPassword) {
-        showToast('كلمتا المرور غير متطابقتين!', 'error');
-        return;
-    }
-
     createUserWithEmailAndPassword(auth, email, password)
-        .then(userCredential => {
-            // Initialize user document in Firestore
-            setDoc(doc(db, "users", userCredential.user.uid), {
-                email: email,
-                wishlist: []
-            });
+        .then(() => {
             closeAuthModal();
-            showToast('تم إنشاء الحساب وتسجيل الدخول بنجاح!', 'success');
+            showToast('تم إنشاء الحساب بنجاح!', 'success');
         })
         .catch(error => showToast(`خطأ: ${error.message}`, 'error'));
 }
@@ -204,546 +271,239 @@ function handleSignup(e) {
 function signInWithGoogle() {
     const provider = new GoogleAuthProvider();
     signInWithPopup(auth, provider)
-        .then(result => {
-            // Initialize user document if it doesn't exist
-            setDoc(doc(db, "users", result.user.uid), {
-                email: result.user.email,
-                displayName: result.user.displayName,
-                wishlist: []
-            }, { merge: true });
+        .then(() => {
             closeAuthModal();
-            showToast(`أهلاً بك، ${result.user.displayName}!`, 'success');
+            showToast('تم تسجيل الدخول بنجاح!', 'success');
         })
-        .catch(error => showToast(`خطأ في تسجيل الدخول عبر جوجل: ${error.message}`, 'error'));
+        .catch(error => showToast(`خطأ: ${error.message}`, 'error'));
 }
 
-function signInWithFacebook() {
-    const provider = new FacebookAuthProvider();
-    signInWithPopup(auth, provider)
-        .then(result => {
-            // Initialize user document if it doesn't exist
-            setDoc(doc(db, "users", result.user.uid), {
-                email: result.user.email,
-                displayName: result.user.displayName,
-                wishlist: []
-            }, { merge: true });
-            closeAuthModal();
-            showToast(`أهلاً بك، ${result.user.displayName}!`, 'success');
+function handleLogout() {
+    signOut(auth)
+        .then(() => {
+            showToast('تم تسجيل الخروج بنجاح!', 'success');
+            user = null;
+            updateAuthUI();
         })
-        .catch(error => showToast(`خطأ في تسجيل الدخول عبر فيسبوك: ${error.message}`, 'error'));
+        .catch(error => showToast(`خطأ: ${error.message}`, 'error'));
 }
 
-// Load Data from Firebase
-async function loadUserData(userId) {
-    const userDoc = await getDoc(doc(db, "users", userId));
-    if (userDoc.exists()) {
-        wishlist = userDoc.data().wishlist || [];
-    } else {
-        // Initialize user document if it doesn't exist
-        await setDoc(doc(db, "users", userId), {
-            email: currentUser.email,
-            wishlist: []
-        });
-        wishlist = [];
-    }
-    await loadProducts();
-    await loadCategories();
-    await loadCoupons();
-    await loadOrders(userId);
-    renderAllContent();
-}
-
-async function loadProducts() {
-    allProducts = [];
-    const querySnapshot = await getDocs(collection(db, "products"));
-    querySnapshot.forEach(doc => {
-        allProducts.push({ id: doc.id, ...doc.data() });
-    });
-}
-
-async function loadCategories() {
-    categories = [];
-    const querySnapshot = await getDocs(collection(db, "categories"));
-    querySnapshot.forEach(doc => {
-        categories.push({ id: doc.id, ...doc.data() });
-    });
-}
-
-async function loadCoupons() {
-    coupons = {};
-    const querySnapshot = await getDocs(collection(db, "coupons"));
-    querySnapshot.forEach(doc => {
-        coupons[doc.data().code] = { id: doc.id, ...doc.data() };
-    });
-}
-
-async function loadOrders(userId) {
-    orders = [];
-    const querySnapshot = await getDocs(collection(db, "orders"));
-    querySnapshot.forEach(doc => {
-        if (doc.data().userId === userId) {
-            orders.push({ id: doc.id, ...doc.data() });
-        }
-    });
-}
-
-// Render Content
-function renderAllContent() {
-    renderCategories();
-    filterAndSortProducts();
-    renderFeaturedProducts();
-    renderWishlistPage();
-    renderOrdersPage();
-    updateCart();
-}
-
-function renderProducts(products, containerId) {
-    const container = document.getElementById(containerId);
-    if (!container) {
-        console.warn(`العنصر '${containerId}' غير موجود في DOM.`);
+async function applyCoupon() {
+    const couponCode = document.getElementById('coupon-code')?.value.toUpperCase();
+    if (!couponCode) {
+        showToast('الرجاء إدخال كود الخصم', 'error');
         return;
     }
-    container.innerHTML = '';
-    const emptyMsg = containerId === 'wishlist-grid' ? 'قائمة مفضلاتك فارغة حاليًا.' : 'لا توجد منتجات تطابق بحثك.';
-    if (products.length === 0) {
-        container.innerHTML = `<p class="empty-page-message">${emptyMsg}</p>`;
+    const coupon = Object.values(coupons).find(c => c.code === couponCode);
+    if (!coupon) {
+        showToast('كود الخصم غير صالح', 'error');
         return;
     }
-
-    products.forEach(product => {
-        const isLiked = wishlist.includes(product.id);
-        const card = document.createElement('div');
-        card.className = 'product-card';
-        card.dataset.productId = product.id;
-        card.innerHTML = `
-            <div class="product-image-container">
-                <img src="${product.img}" alt="${product.name}" loading="lazy" class="product-main-image" />
-            </div>
-            <div class="product-actions">
-                <button class="action-btn wishlist-btn${isLiked ? ' liked' : ''}" data-product-id="${product.id}" aria-label="Add to wishlist"><i class="fas fa-heart"></i></button>
-                <button class="action-btn add-to-cart-btn" data-product-id="${product.id}" aria-label="Add to cart"><i class="fas fa-shopping-cart"></i></button>
-            </div>
-            <div class="product-info">
-                <h3 class="product-name-link">${product.name}</h3>
-                <span class="product-price">${product.price} جنيه</span>
-            </div>`;
-        container.appendChild(card);
-    });
+    let total = cart.reduce((sum, item) => {
+        const product = products.find(p => p.id === item.id);
+        return sum + (product ? product.price * item.quantity : 0);
+    }, 0);
+    let discountedTotal = coupon.type === 'percent'
+        ? total * (1 - coupon.value / 100)
+        : total - coupon.value;
+    discountedTotal = Math.max(discountedTotal, 0);
+    document.getElementById('cart-discounted-total').textContent = discountedTotal.toFixed(2);
+    showToast('تم تطبيق كود الخصم بنجاح!', 'success');
 }
 
-function renderFeaturedProducts() {
-    renderProducts(allProducts.filter(p => p.featured), 'featured-products-grid');
-}
-
-function renderCategories() {
-    const container = document.getElementById('categories-filter');
-    if (!container) return;
-    container.innerHTML = '<button class="category-btn active" data-filter="all">الكل</button>';
-    categories.forEach(category => {
-        container.innerHTML += `<button class="category-btn" data-filter="${category.id}">${category.name}</button>`;
-    });
-}
-
-function filterAndSortProducts() {
-    let productsToDisplay = [...allProducts];
-    const activeCategoryBtn = document.querySelector('.category-btn.active');
-    const activeCategory = activeCategoryBtn ? activeCategoryBtn.dataset.filter : 'all';
-    if (activeCategory !== 'all') {
-        productsToDisplay = productsToDisplay.filter(p => p.category === activeCategory);
-    }
-    const sortSelect = document.getElementById('sort-select');
-    const sortValue = sortSelect ? sortSelect.value : 'price-desc';
-    if (sortValue === 'price-asc') productsToDisplay.sort((a, b) => a.price - b.price);
-    else if (sortValue === 'price-desc') productsToDisplay.sort((a, b) => b.price - a.price);
-
-    renderProducts(productsToDisplay, 'product-grid');
-}
-
-// Page & Modal Navigation
-function showPage(pageId) {
-    if (!currentUser && (pageId === 'wishlist' || pageId === 'orders')) {
-        showToast('يجب عليك تسجيل الدخول أولاً لعرض هذه الصفحة.', 'info');
-        openAuthModal();
-        return;
-    }
-    const validPages = ['home', 'store', 'wishlist', 'orders'];
-    if (!validPages.includes(pageId)) {
-        console.warn(`قيمة pageId غير صالحة: ${pageId}`);
-        return;
-    }
-    const pageElement = document.getElementById(`${pageId}-page`);
-    if (!pageElement) {
-        console.warn(`الصفحة '${pageId}-page' غير موجودة في DOM.`);
-        return;
-    }
-    document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
-    pageElement.classList.add('active');
-
-    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-    const navLink = document.querySelector(`.nav-link[data-page="${pageId}"]`);
-    if (navLink) navLink.classList.add('active');
-
-    if (pageId === 'wishlist') renderWishlistPage();
-    if (pageId === 'orders') renderOrdersPage();
-
-    const navLinks = document.querySelector('.nav-links');
-    if (navLinks && navLinks.classList.contains('active')) navLinks.classList.remove('active');
-    window.scrollTo(0, 0);
-}
-
-function openProductModal(productId) {
-    const product = allProducts.find(p => p.id === productId);
-    if (!product) return;
-
-    const container = document.getElementById('product-detail-content');
-    if (!container) return;
-    const isLiked = wishlist.includes(product.id);
-
-    container.innerHTML = `
-        <div class="product-detail-layout">
-            <div class="product-gallery">
-                <div class="main-image-container"><img src="${product.img}" id="main-product-image" alt="${product.name}"></div>
-            </div>
-            <div class="product-details-info">
-                <div class="detail-header">
-                    <h1>${product.name}</h1>
-                    <button class="action-btn wishlist-btn ${isLiked ? 'liked' : ''}" data-product-id="${product.id}"><i class="fas fa-heart"></i></button>
-                </div>
-                <div class="product-rating">
-                    <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="far fa-star"></i>
-                </div>
-                <p class="description">${product.desc}</p>
-                <div class="price">${product.price} جنيه</div>
-                <div class="product-detail-actions">
-                    <button class="cta-button add-to-cart-btn" data-product-id="${product.id}">أضف إلى السلة</button>
-                </div>
-                <div class="share-buttons">
-                    <p>مشاركة:</p>
-                    <a href="https://api.whatsapp.com/send?text=${encodeURIComponent('شاهدي هذا المنتج الرائع: ' + product.name + ' ' + window.location.href)}" target="_blank" class="share-btn whatsapp"><i class="fab fa-whatsapp"></i></a>
-                    <a href="#" class="share-btn instagram"><i class="fab fa-instagram"></i></a>
-                </div>
-            </div>
-        </div>`;
-    const modal = document.getElementById('product-detail-modal');
-    if (modal) modal.classList.add('open');
-}
-
-function closeProductModal() {
-    const modal = document.getElementById('product-detail-modal');
-    if (modal) modal.classList.remove('open');
-}
-
-// Cart Logic
-function openCart() {
-    const cartSidebar = document.getElementById('cart-sidebar');
-    const cartOverlay = document.getElementById('cart-overlay');
-    if (cartSidebar && cartOverlay) {
-        cartSidebar.classList.add('open');
-        cartOverlay.classList.add('open');
-    }
-}
-
-function closeCart() {
-    const cartSidebar = document.getElementById('cart-sidebar');
-    const cartOverlay = document.getElementById('cart-overlay');
-    if (cartSidebar && cartOverlay) {
-        cartSidebar.classList.remove('open');
-        cartOverlay.classList.remove('open');
-    }
-}
-
-function addToCart(productId) {
-    if (!currentUser) {
-        showToast('يجب عليك تسجيل الدخول أولاً للإضافة إلى السلة.', 'info');
-        openAuthModal();
-        return;
-    }
-
-    const product = allProducts.find(p => p.id === productId);
-    if (!product) return;
-    const cartItem = cart.find(item => item.id === productId);
-    if (cartItem) cartItem.quantity++;
-    else cart.push({ id: productId, ...product, quantity: 1 });
-    showToast('تمت الإضافة إلى سلة المشتريات ✅', 'success');
-    updateCart();
-}
-
-function updateCart() {
-    localStorage.setItem('anaqaCart', JSON.stringify(cart));
-    renderCartItems();
-    updateCartSummary();
-    updateCartCount();
-}
-
-function renderCartItems() {
-    const container = document.getElementById('cart-items');
-    if (!container) return;
-    if (cart.length === 0) {
-        container.innerHTML = '<p class="cart-empty-message">سلة التسوق فارغة.</p>';
-        return;
-    }
-    container.innerHTML = cart.map(item => `
-        <div class="cart-item">
-            <img src="${item.img}" alt="${item.name}">
-            <div class="cart-item-details">
-                <h4>${item.name}</h4>
-                <span class="price">${item.price} جنيه</span>
-                <div class="cart-item-controls">
-                    <button class="quantity-btn" data-id="${item.id}" data-change="-1">-</button>
-                    <span>${item.quantity}</span>
-                    <button class="quantity-btn" data-id="${item.id}" data-change="1">+</button>
-                    <button class="remove-item-btn" data-id="${item.id}"><i class="fas fa-trash-alt"></i></button>
-                </div>
-            </div>
-        </div>`).join('');
-}
-
-function updateCartSummary() {
-    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    let discountValue = 0;
-    const discountRow = document.getElementById('discount-row');
-    const cartDiscount = document.getElementById('cart-discount');
-    const cartSubtotal = document.getElementById('cart-subtotal');
-    const cartTotal = document.getElementById('cart-total');
-
-    if (!discountRow || !cartDiscount || !cartSubtotal || !cartTotal) return;
-
-    if (appliedCoupon) {
-        if (appliedCoupon.type === 'percent') discountValue = subtotal * (appliedCoupon.value / 100);
-        else discountValue = Math.min(subtotal, appliedCoupon.value);
-        discountRow.style.display = 'flex';
-        cartDiscount.textContent = `- ${discountValue.toFixed(2)} جنيه`;
-    } else {
-        discountRow.style.display = 'none';
-    }
-    const total = Math.max(0, subtotal - discountValue);
-    cartSubtotal.textContent = `${subtotal.toFixed(2)} جنيه`;
-    cartTotal.textContent = `${total.toFixed(2)} جنيه`;
-}
-
-function updateCartCount() {
-    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-    const cartCountEl = document.querySelector('.cart-count');
-    if (cartCountEl) {
-        cartCountEl.textContent = totalItems;
-        cartCountEl.classList.toggle('visible', totalItems > 0);
-    }
-}
-
-function applyCoupon() {
-    const couponInput = document.getElementById('coupon-input');
-    if (!couponInput) return;
-    const code = couponInput.value.trim().toUpperCase();
-    if (coupons[code]) {
-        appliedCoupon = coupons[code];
-        showToast(`🎉 تم تطبيق الخصم بنجاح`, 'success');
-    } else {
-        appliedCoupon = null;
-        showToast(`⚠ الكود غير صحيح`, 'error');
-    }
-    couponInput.value = '';
-    updateCartSummary();
-}
-
-// Checkout & Orders
 async function handleCheckout() {
-    if (!currentUser) {
-        showToast('يجب عليك تسجيل الدخول أولاً لإتمام الشراء.', 'info');
+    if (!user) {
+        showToast('الرجاء تسجيل الدخول لإتمام الطلب', 'error');
         openAuthModal();
         return;
     }
-
     if (cart.length === 0) {
-        showToast('سلة التسوق فارغة!', 'error');
+        showToast('سلة التسوق فارغة', 'error');
         return;
     }
-
-    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    let discountValue = 0;
-    if (appliedCoupon) {
-        if (appliedCoupon.type === 'percent') discountValue = subtotal * (appliedCoupon.value / 100);
-        else discountValue = Math.min(subtotal, appliedCoupon.value);
+    let total = cart.reduce((sum, item) => {
+        const product = products.find(p => p.id === item.id);
+        return sum + (product ? product.price * item.quantity : 0);
+    }, 0);
+    const couponCode = document.getElementById('coupon-code')?.value.toUpperCase();
+    if (couponCode) {
+        const coupon = Object.values(coupons).find(c => c.code === couponCode);
+        if (coupon) {
+            total = coupon.type === 'percent'
+                ? total * (1 - coupon.value / 100)
+                : total - coupon.value;
+            total = Math.max(total, 0);
+        }
     }
-    const total = subtotal - discountValue;
-
-    const newOrder = {
-        userId: currentUser.uid,
-        date: new Date().toLocaleDateString('ar-EG'),
-        items: [...cart],
-        total,
-        status: 'review'
+    const order = {
+        userId: user.uid,
+        items: cart,
+        total: total,
+        status: 'review',
+        date: new Date().toISOString()
     };
-
     try {
-        await addDoc(collection(db, "orders"), newOrder);
+        await addDoc(collection(db, "orders"), order);
         cart = [];
-        appliedCoupon = null;
-        updateCart();
-        closeCart();
-        showToast('🎉 تم إرسال طلبك بنجاح!', 'success');
-        showPage('orders');
-        await loadOrders(currentUser.uid);
+        localStorage.setItem('cart', JSON.stringify(cart));
+        updateCartUI();
+        renderCart();
+        renderOrders();
+        showToast('تم إنشاء الطلب بنجاح!', 'success');
     } catch (error) {
         showToast(`خطأ: ${error.message}`, 'error');
     }
 }
 
-function renderOrdersPage() {
+function renderOrders() {
     const container = document.getElementById('orders-list');
     if (!container) return;
-    if (!currentUser) {
-        container.innerHTML = '<p class="empty-page-message">يجب تسجيل الدخول لعرض الطلبات.</p>';
-        return;
-    }
-
-    if (orders.length === 0) {
-        container.innerHTML = '<p class="empty-page-message">ليس لديك أي طلبات حاليًا.</p>';
-        return;
-    }
-
-    container.innerHTML = orders.map(order => {
-        const statusInfo = {
-            review: { text: "تحت المراجعة", class: "review" },
-            shipping: { text: "قيد التوصيل", class: "shipping" },
-            delivered: { text: "تم الاستلام", class: "delivered" },
-            cancelled: { text: "ملغي", class: "cancelled" },
-            returned: { text: "تم الإرجاع", class: "returned" }
-        }[order.status] || { text: 'غير معروف', class: '' };
-        const itemsSummary = order.items.map(item => `${item.name} (x${item.quantity})`).join('، ');
-
-        let actionButtonHTML = '';
-        if (order.status === 'review') {
-            actionButtonHTML = `<button class="action-button-order cancel" data-order-id="${order.id}">إلغاء الطلب</button>`;
-        } else if (order.status === 'delivered') {
-            actionButtonHTML = `<button class="action-button-order return" data-order-id="${order.id}">إرجاع الطلب</button>`;
-        }
-
-        return `
-            <div class="order-card">
-                <div class="order-header">
-                    <h3>طلب رقم #${order.id}</h3>
-                    <span class="order-status ${statusInfo.class}">${statusInfo.text}</span>
-                </div>
-                <div class="order-items-summary">
-                    <p><strong>المنتجات:</strong> ${itemsSummary}</p>
-                </div>
-                <div class="order-footer">
-                    <span>تاريخ الطلب: ${order.date}</span>
-                    <div class="order-footer-actions">
-                        <span style="margin-right: 15px;">الإجمالي: ${order.total.toFixed(2)} جنيه</span>
-                        ${actionButtonHTML}
+    container.innerHTML = orders.length === 0
+        ? '<p class="empty-message">لا توجد طلبات حاليًا.</p>'
+        : orders.map(order => {
+            const statusInfo = {
+                review: { text: "تحت المراجعة", class: "review" },
+                shipping: { text: "قيد التوصيل", class: "shipping" },
+                delivered: { text: "تم الاستلام", class: "delivered" },
+                cancelled: { text: "ملغي", class: "cancelled" },
+                returned: { text: "تم الإرجاع", class: "returned" }
+            }[order.status] || { text: 'غير معروف', class: '' };
+            const itemsSummary = order.items.map(item => `${item.name} (x${item.quantity})`).join('، ');
+            return `
+                <div class="order-card">
+                    <div class="order-header">
+                        <h3>طلب رقم #${order.id}</h3>
+                        <span class="order-status ${statusInfo.class}">${statusInfo.text}</span>
                     </div>
-                </div>
-            </div>`;
-    }).join('');
+                    <div class="order-items-summary">
+                        <p><strong>المنتجات:</strong> ${itemsSummary}</p>
+                        <p><strong>الإجمالي:</strong> ${order.total.toFixed(2)} جنيه</p>
+                        <p><strong>تاريخ الطلب:</strong> ${order.date}</p>
+                    </div>
+                </div>`;
+        }).join('');
 }
 
-// Wishlist Logic
-async function toggleWishlist(productId) {
-    if (!currentUser) {
-        showToast('يجب عليك تسجيل الدخول أولاً للإضافة إلى المفضلة.', 'info');
-        openAuthModal();
-        return;
-    }
-
-    const userRef = doc(db, "users", currentUser.uid);
-    if (wishlist.includes(productId)) {
-        wishlist = wishlist.filter(id => id !== productId);
-        await updateDoc(userRef, { wishlist: arrayRemove(productId) });
-        showToast('تمت الإزالة من المفضلة 🤍', 'info');
-    } else {
-        wishlist.push(productId);
-        await updateDoc(userRef, { wishlist: arrayUnion(productId) });
-        showToast('أُضيف إلى المفضلة ♥️', 'info');
-    }
-    renderWishlistPage();
-}
-
-function renderWishlistPage() {
-    const likedProducts = allProducts.filter(p => wishlist.includes(p.id));
-    renderProducts(likedProducts, 'wishlist-grid');
-}
-
-// Global Event Handler
-async function handleGlobalClick(e) {
+function handleGlobalClick(e) {
     const target = e.target;
-    let targetBtn;
 
-    // Page navigation
-    const navLink = target.closest('[data-page]');
-    if (navLink) {
+    const addToCartBtn = target.closest('.add-to-cart-btn');
+    if (addToCartBtn) {
+        const productId = addToCartBtn.dataset.productId;
+        addToCart(productId);
+    }
+
+    const quantityBtn = target.closest('.quantity-btn');
+    if (quantityBtn) {
+        const productId = quantityBtn.dataset.productId;
+        const action = quantityBtn.dataset.action;
+        updateCartItemQuantity(productId, action);
+    }
+
+    const removeFromCartBtn = target.closest('.remove-from-cart-btn');
+    if (removeFromCartBtn) {
+        const productId = removeFromCartBtn.dataset.productId;
+        removeFromCart(productId);
+    }
+
+    const showSignupBtn = target.closest('#show-signup');
+    if (showSignupBtn) {
         e.preventDefault();
-        const pageId = navLink.dataset.page;
-        if (['home', 'store', 'wishlist', 'orders'].includes(pageId)) {
-            showPage(pageId);
-        } else {
-            console.warn(`قيمة data-page غير صالحة: ${pageId}`);
-        }
+        showSignupForm();
     }
 
-    // Wishlist button
-    if ((targetBtn = target.closest('.wishlist-btn'))) {
-        const productId = targetBtn.dataset.productId;
-        if (productId) await toggleWishlist(productId);
+    const showLoginBtn = target.closest('#show-login');
+    if (showLoginBtn) {
+        e.preventDefault();
+        showLoginForm();
     }
 
-    // Add to cart button
-    else if ((targetBtn = target.closest('.add-to-cart-btn'))) {
-        const productId = targetBtn.dataset.productId;
-        if (productId) addToCart(productId);
+    const categoryFilter = document.getElementById('category-filter');
+    if (categoryFilter && target === categoryFilter) {
+        renderProducts();
     }
 
-    // Product card image/name click
-    else if (target.closest('.product-main-image, .product-name-link')) {
-        const productId = target.closest('.product-card')?.dataset.productId;
-        if (productId) openProductModal(productId);
+    const searchInput = document.getElementById('search-filter');
+    if (searchInput && target === searchInput) {
+        searchInput.addEventListener('input', () => renderProducts());
     }
 
-    // Category filter button
-    else if ((targetBtn = target.closest('.category-btn'))) {
-        document.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('active'));
-        targetBtn.classList.add('active');
-        filterAndSortProducts();
-    }
-
-    // Cart quantity/remove controls
-    const cartControl = target.closest('.quantity-btn, .remove-item-btn');
-    if (cartControl) {
-        const productId = cartControl.dataset.id;
-        if (cartControl.classList.contains('quantity-btn')) {
-            const change = parseInt(cartControl.dataset.change);
-            const item = cart.find(i => i.id === productId);
-            if (item) {
-                item.quantity += change;
-                if (item.quantity <= 0) cart = cart.filter(i => i.id !== productId);
-                updateCart();
-            }
-        } else {
-            cart = cart.filter(i => i.id !== productId);
-            showToast('تم حذف المنتج من السلة', 'info');
-            updateCart();
-        }
-    }
-
-    // Order action buttons
-    const orderActionBtn = target.closest('.action-button-order');
-    if (orderActionBtn) {
-        const orderId = orderActionBtn.dataset.orderId;
-        if (orderActionBtn.classList.contains('cancel')) {
-            await updateDoc(doc(db, "orders", orderId), { status: "cancelled" });
-            showToast('تم إلغاء الطلب.', 'info');
-            await loadOrders(currentUser.uid);
-            renderOrdersPage();
-        } else if (orderActionBtn.classList.contains('return')) {
-            await updateDoc(doc(db, "orders", orderId), { status: "returned" });
-            showToast('تم تسجيل طلب الإرجاع.', 'info');
-            await loadOrders(currentUser.uid);
-            renderOrdersPage();
-        }
+    const authModal = document.getElementById('auth-modal');
+    if (authModal && target === authModal) {
+        closeAuthModal();
     }
 }
 
-// Show Toast
+function addToCart(productId) {
+    const product = products.find(p => p.id === productId);
+    if (!product) return;
+    const cartItem = cart.find(item => item.id === productId);
+    if (cartItem) {
+        cartItem.quantity += 1;
+    } else {
+        cart.push({ id: productId, name: product.name, price: product.price, quantity: 1, img: product.img });
+    }
+    localStorage.setItem('cart', JSON.stringify(cart));
+    updateCartUI();
+    showToast('تم إضافة المنتج إلى السلة!', 'success');
+}
+
+function updateCartItemQuantity(productId, action) {
+    const cartItem = cart.find(item => item.id === productId);
+    if (!cartItem) return;
+    if (action === 'increase') {
+        cartItem.quantity += 1;
+    } else if (action === 'decrease' && cartItem.quantity > 1) {
+        cartItem.quantity -= 1;
+    }
+    localStorage.setItem('cart', JSON.stringify(cart));
+    updateCartUI();
+    renderCart();
+}
+
+function removeFromCart(productId) {
+    cart = cart.filter(item => item.id !== productId);
+    localStorage.setItem('cart', JSON.stringify(cart));
+    updateCartUI();
+    renderCart();
+    showToast('تم إزالة المنتج من السلة!', 'success');
+}
+
+function updateCartUI() {
+    const cartCount = document.getElementById('cart-count');
+    if (cartCount) {
+        cartCount.textContent = cart.reduce((sum, item) => sum + item.quantity, 0);
+    }
+}
+
+function openAuthModal() {
+    const authModal = document.getElementById('auth-modal');
+    if (authModal) authModal.classList.add('open');
+}
+
+function closeAuthModal() {
+    const authModal = document.getElementById('auth-modal');
+    if (authModal) authModal.classList.remove('open');
+}
+
+function showSignupForm() {
+    const loginForm = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
+    if (loginForm && signupForm) {
+        loginForm.classList.add('hidden');
+        signupForm.classList.remove('hidden');
+    }
+}
+
+function showLoginForm() {
+    const loginForm = document.getElementById('login-form');
+    const signupForm = document.getElementById('signup-form');
+    if (loginForm && signupForm) {
+        loginForm.classList.remove('hidden');
+        signupForm.classList.add('hidden');
+    }
+}
+
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     if (!container) return;
