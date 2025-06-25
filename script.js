@@ -1,4 +1,4 @@
-// DZ Store - أحدث نسخة مع التحسينات المطلوبة
+// DZ Store - أحدث نسخة مع فتح صفحة التسوق للجميع وكل الميزات المطلوبة
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
@@ -42,6 +42,7 @@ function showSection(section) {
 function route() {
     let hash = location.hash.replace('#', '');
     if (!hash || !['home', 'shop', 'favorites', 'cart', 'orders', 'profile'].includes(hash)) hash = 'home';
+    // يجب تسجيل الدخول فقط لهذه الصفحات
     if (['cart', 'favorites', 'orders', 'profile'].includes(hash) && !user) {
         openAuthModal();
         location.hash = '#home';
@@ -53,7 +54,7 @@ function route() {
     if (hash === 'cart') renderCart();
     if (hash === 'orders') renderOrders();
     if (hash === 'profile') renderProfile();
-    if (hash === 'shop') renderShop();
+    if (hash === 'shop') renderShop(); // صفحة التسوق متاحة للجميع
     if (hash === 'home') {
         renderFeaturedProducts();
         renderGreeting();
@@ -191,7 +192,6 @@ async function loadFavoritesFromDB() {
     updateFavUI();
 }
 async function loadLastOrderId() {
-    // Fetch from a special doc in DB, to guarantee unique order number
     const docSnap = await getDoc(doc(db, "meta", "lastOrderId"));
     lastOrderId = docSnap.exists() ? (docSnap.data().value || 10000) : 10000;
 }
@@ -227,7 +227,6 @@ function renderShop() {
     const typeSelect = document.getElementById('shop-type-filter');
     const searchInput = document.getElementById('shop-search-filter');
 
-    // Fill categories if not already
     if (catSelect && catSelect.innerHTML.trim() === '') {
         catSelect.innerHTML = '<option value="all">كل التصنيفات</option>' +
             categories.map(category => `<option value="${category.id}">${category.name}</option>`).join('');
@@ -251,7 +250,6 @@ function renderShop() {
 
     // نوع العرض
     if (typeSelect.value === "categories") {
-        // عرض المنتجات حسب الأقسام (قسم واحد فقط)
         grid.innerHTML = categories.map(cat => {
             const items = filteredProducts.filter(p => p.category === cat.id);
             if (!items.length) return '';
@@ -289,7 +287,6 @@ function makeProductCard(product, isFeatured = false) {
       </div>
     `;
 }
-// بحث fuzzy بسيط (تغاضى عن حرف أو اتنين)
 function fuzzyMatch(str, q) {
     str = (str || "").toLowerCase();
     if (str.includes(q)) return true;
@@ -460,7 +457,6 @@ function renderProfile() {
 function handleGlobalClick(e) {
     const target = e.target;
 
-    // المنتج: فتح النافذة المنبثقة عند الضغط على البطاقة
     if (target.closest('.product-card') && !target.classList.contains('add-to-cart-btn') && !target.classList.contains('add-to-fav-btn')) {
         const card = target.closest('.product-card');
         const productId = card.dataset.productId;
@@ -490,7 +486,6 @@ function handleGlobalClick(e) {
     if (authModal && target === authModal) closeAuthModal();
     if (target.id === "product-modal") closeProductModal();
 }
-// زر المفضلة من نافذة المنتج - معالجة خاصة لمنع الازدواج
 function modalFavHandler() {
     if (modalFavClickLock) return;
     modalFavClickLock = true;
@@ -635,10 +630,8 @@ async function handleCheckout() {
     const newOrderNumber = lastOrderId + 1;
     try {
         await setDoc(doc(db, "meta", "lastOrderId"), { value: newOrderNumber });
-        // حفظ رقم الطلب الجديد كآخر رقم
         lastOrderId = newOrderNumber;
     } catch (e) {
-        // fallback إذا فشل، استخدم التاريخ
         lastOrderId = Math.floor(10000 + Math.random() * 89999);
     }
 
