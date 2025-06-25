@@ -121,6 +121,7 @@ async function initApp() {
         if (user) {
             document.getElementById('profile-name').textContent = user.displayName || "حسابي";
             await loadUserData();
+            await checkUserProfileCompletion();
         } else {
             document.getElementById('profile-name').textContent = "حسابي";
             renderContent();
@@ -526,7 +527,68 @@ function updateModalFavBtn() {
     btn.innerHTML = isFav ? "★ تمت الإضافة للمفضلة" : "☆ أضف للمفضلة";
     btn.classList.toggle("fav", isFav);
 }
+// ========== بيانات المستخدم الشخصية ==========
 
+// دالة لعرض نافذة إكمال البيانات
+function showProfileCompleteModal(data = {}) {
+  document.getElementById('profile-complete-modal').style.display = "flex";
+  document.getElementById('full-name-input').value = data.fullName || "";
+  document.getElementById('phone-input').value = data.phone || "";
+  document.getElementById('phone2-input').value = data.phone2 || "";
+  document.getElementById('address-input').value = data.address || "";
+  document.getElementById('landmark-input').value = data.landmark || "";
+}
+
+// دالة لإخفاء النافذة
+function closeProfileCompleteModal() {
+  document.getElementById('profile-complete-modal').style.display = "none";
+}
+
+// دالة لفحص البيانات الشخصية
+async function checkUserProfileCompletion(forceShow = false) {
+  let ok = await checkUserProfileCompletion();
+  if (!ok) {
+    showToast("يجب إكمال بياناتك الشخصية لإتمام الطلب","error");
+    return;
+  }  
+  if (!user) return false;
+  const userDoc = await getDoc(doc(db, "users", user.uid));
+  let data = userDoc.exists() ? userDoc.data() : {};
+  let requiredFields = ["fullName", "phone", "address"];
+  let incomplete = requiredFields.some(f => !data[f] || !data[f].trim());
+  if (incomplete || forceShow) {
+    showProfileCompleteModal(data);
+    return false;
+  }
+  return true;
+}
+
+// عند الضغط على زرار "حفظ البيانات"
+document.getElementById('profile-complete-form').onsubmit = async function(e){
+  e.preventDefault();
+  const fullName = document.getElementById('full-name-input').value.trim();
+  const phone = document.getElementById('phone-input').value.trim();
+  const phone2 = document.getElementById('phone2-input').value.trim();
+  const address = document.getElementById('address-input').value.trim();
+  const landmark = document.getElementById('landmark-input').value.trim();
+  if (!fullName || !phone || !address) {
+    showToast("يرجى ملء جميع الحقول الإجبارية","error");
+    return;
+  }
+  await setDoc(doc(db, "users", user.uid), {
+    fullName, phone, phone2, address, landmark,
+    email: user.email,
+    displayName: user.displayName || fullName
+  }, {merge:true});
+  showToast("تم حفظ البيانات بنجاح","success");
+  closeProfileCompleteModal();
+  renderProfile && renderProfile(); // لو عندك دالة renderProfile
+};
+
+// زر "تخطي الآن"
+document.getElementById('skip-profile-btn').onclick = function() {
+  closeProfileCompleteModal();
+};
 // --------- Cart/Fav DB ----------
 function addToCart(productId, fromModal = false) {
     const product = products.find(p => p.id === productId);
