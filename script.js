@@ -1,4 +1,4 @@
-// DZ Store - نسخة حديثة مع كل الميزات المطلوبة في السؤال الأخير
+// DZ Store - أحدث نسخة مع التحسينات المطلوبة
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
@@ -24,6 +24,11 @@ let cart = [];
 let favorites = [];
 let coupons = {};
 let orders = [];
+let lastOrderTime = 0;
+let lastOrderId = 0;
+
+let modalCurrentProductId = null;
+let modalFavClickLock = false;
 
 // --------- SPA Routing ----------
 function showSection(section) {
@@ -49,22 +54,29 @@ function route() {
     if (hash === 'orders') renderOrders();
     if (hash === 'profile') renderProfile();
     if (hash === 'shop') renderShop();
-    if (hash === 'home') renderFeaturedProducts();
+    if (hash === 'home') {
+        renderFeaturedProducts();
+        renderGreeting();
+    }
 }
 window.addEventListener('hashchange', route);
 
-// --------- Initializers ----------
+// --------- Initializers / Loading ----------
 document.addEventListener('DOMContentLoaded', async () => {
-    initApp();
+    document.getElementById('loading-overlay').style.display = "flex";
+    await initApp();
+    document.getElementById('loading-overlay').style.display = "none";
     route();
+
     document.querySelector('.hamburger').addEventListener('click', openHamburgerMenu);
     document.body.addEventListener('click', function(e) {
       if (e.target.classList.contains('nav-link') || e.target.id === 'auth-btn') closeHamburgerMenu();
       if (window.innerWidth < 800 && !e.target.closest('.nav-links') && !e.target.classList.contains('hamburger')) closeHamburgerMenu();
     });
+
     document.getElementById('close-product-modal').onclick = closeProductModal;
-    document.getElementById('modal-add-cart').onclick = () => addToCart(modalCurrentProductId);
-    document.getElementById('modal-add-fav').onclick = () => toggleFavorite(modalCurrentProductId);
+    document.getElementById('modal-add-cart').onclick = () => addToCart(modalCurrentProductId, true);
+    document.getElementById('modal-add-fav').onclick = modalFavHandler;
     document.getElementById('show-all-featured').onclick = () => { location.hash = "#shop"; };
     document.getElementById('shop-category-filter').onchange = renderShop;
     document.getElementById('shop-sort-filter').onchange = renderShop;
@@ -79,7 +91,8 @@ function closeHamburgerMenu() {
   document.querySelector('.nav-links').classList.remove('open');
 }
 
-function initApp() {
+// --------- Auth + UI ---------
+async function initApp() {
     document.body.addEventListener('click', handleGlobalClick);
 
     document.getElementById('login-btn').addEventListener('click', handleLogin);
@@ -108,8 +121,6 @@ function initApp() {
         route();
     });
 }
-
-// --------- Auth UI ---------
 function updateAuthUI() {
     const authText = document.getElementById('auth-text');
     const authBtn = document.getElementById('auth-btn');
@@ -123,6 +134,15 @@ function updateAuthUI() {
         }
     }
 }
+function renderGreeting() {
+    const greet = document.getElementById('home-greeting');
+    if (!greet) return;
+    if (!user) { greet.innerHTML = ''; return; }
+    const hour = new Date().getHours();
+    const isMorning = hour >= 5 && hour < 18;
+    const name = user.displayName || user.email.split('@')[0];
+    greet.innerHTML = ` ${isMorning ? "صباح" : "مساء"} الخير <span style="color:#f59e42">${name}</span> 👋`;
+}
 
 // --------- Load Data ---------
 async function loadUserData() {
@@ -132,6 +152,7 @@ async function loadUserData() {
     await loadOrders();
     await loadCartFromDB();
     await loadFavoritesFromDB();
+    await loadLastOrderId();
     renderContent();
 }
 async function loadProducts() {
@@ -169,6 +190,11 @@ async function loadFavoritesFromDB() {
     favorites = docSnap.exists() ? docSnap.data().items : [];
     updateFavUI();
 }
+async function loadLastOrderId() {
+    // Fetch from a special doc in DB, to guarantee unique order number
+    const docSnap = await getDoc(doc(db, "meta", "lastOrderId"));
+    lastOrderId = docSnap.exists() ? (docSnap.data().value || 10000) : 10000;
+}
 function renderContent() {
     renderFeaturedProducts();
     renderCategories();
@@ -177,6 +203,7 @@ function renderContent() {
     renderOrders();
     renderProfile();
     renderShop();
+    renderGreeting();
 }
 
 // --------- Featured Products ----------
@@ -267,16 +294,11 @@ function fuzzyMatch(str, q) {
     str = (str || "").toLowerCase();
     if (str.includes(q)) return true;
     if (q.length < 2) return false;
-    // يسمح بخطأ حرف واحد أو اثنين
     let diffs = 0;
     let i = 0, j = 0;
     while (i < str.length && j < q.length) {
-        if (str[i] === q[j]) {
-            i++; j++;
-        } else {
-            diffs++; i++;
-            if (diffs > 2) return false;
-        }
+        if (str[i] === q[j]) { i++; j++; }
+        else { diffs++; i++; if (diffs > 2) return false; }
     }
     return diffs <= 2;
 }
@@ -294,9 +316,7 @@ function renderFavorites() {
         ? '<p class="empty-message">لا توجد منتجات مفضلة بعد.</p>'
         : favProducts.map(product => makeProductCard(product, false)).join('');
 }
-function updateFavUI() {
-    // يمكن إضافة عداد للمفضلة في الـ Navbar إذا رغبت
-}
+function updateFavUI() {}
 
 // --------- Cart ----------
 function renderCart() {
@@ -371,6 +391,17 @@ async function cancelOrder(orderId) {
     await loadOrders();
     renderOrders();
 }
+function formatOrderDate(dateISO) {
+    const d = new Date(dateISO);
+    let hours = d.getHours();
+    let mins = d.getMinutes();
+    let ampm = hours >= 12 ? "مساءً" : "صباحًا";
+    if (hours > 12) hours -= 12;
+    if (hours === 0) hours = 12;
+    mins = mins < 10 ? "0" + mins : mins;
+    const dateStr = d.toLocaleDateString('ar-EG');
+    return `${dateStr} - ${hours}:${mins} ${ampm}`;
+}
 function renderOrders() {
     const container = document.getElementById('orders-list');
     if (!container) return;
@@ -387,16 +418,22 @@ function renderOrders() {
             returned: { text: "تم الإرجاع", class: "returned" }
         }[order.status] || { text: 'غير معروف', class: '' };
         const itemsSummary = order.items.map(item => `${item.name} (x${item.quantity})`).join('، ');
+        let couponInfo = "";
+        let totalBefore = order.total_before_discount ? `<p><strong>الإجمالي قبل الخصم:</strong> ${order.total_before_discount.toFixed(2)} جنيه</p>` : "";
+        let couponCodeText = order.coupon_code ? `<p><strong>كود الخصم المستخدم:</strong> ${order.coupon_code}</p>` : "";
+        let totalAfter = order.total !== order.total_before_discount ? `<p><strong>الإجمالي بعد الخصم:</strong> ${order.total.toFixed(2)} جنيه</p>` : "";
+
         return `
             <div class="order-card">
                 <div class="order-header">
-                    <h3>طلب رقم #${order.id}</h3>
+                    <h3>طلب رقم #${order.order_number || order.id}</h3>
                     <span class="order-status ${statusInfo.class}">${statusInfo.text}</span>
                 </div>
                 <div class="order-items-summary">
                     <p><strong>المنتجات:</strong> ${itemsSummary}</p>
-                    <p><strong>الإجمالي:</strong> ${order.total.toFixed(2)} جنيه</p>
-                    <p><strong>تاريخ الطلب:</strong> ${order.date.split('T')[0]}</p>
+                    ${totalBefore}${totalAfter}
+                    ${couponCodeText}
+                    <p><strong>تاريخ الطلب:</strong> ${formatOrderDate(order.date)}</p>
                     ${order.status === "review" ? `<button class="small-btn danger-btn" onclick="window.cancelOrder && cancelOrder('${order.id}')">إرجاع / إلغاء الطلب</button>` : ""}
                 </div>
             </div>`;
@@ -414,14 +451,12 @@ function renderProfile() {
     // إذا كان تسجيل جوجل فقط أخفِ زر تغيير كلمة السر
     if (user.providerData.some(p => p.providerId === "google.com")) {
         document.getElementById('refresh-profile-btn').style.display = "";
-        // hide change password if exists
         const changePassBtn = document.getElementById('change-password-btn');
         if (changePassBtn) changePassBtn.style.display = "none";
     }
 }
 
-// --------- Cart/Fav Actions + Product Modal ----------
-let modalCurrentProductId = null;
+// --------- Cart/Fav/Product Modal Actions ----------
 function handleGlobalClick(e) {
     const target = e.target;
 
@@ -455,6 +490,15 @@ function handleGlobalClick(e) {
     if (authModal && target === authModal) closeAuthModal();
     if (target.id === "product-modal") closeProductModal();
 }
+// زر المفضلة من نافذة المنتج - معالجة خاصة لمنع الازدواج
+function modalFavHandler() {
+    if (modalFavClickLock) return;
+    modalFavClickLock = true;
+    setTimeout(() => modalFavClickLock = false, 250);
+    if (!user) { openAuthModal(); showToast('سجّل الدخول لإضافة للمفضلة', 'error'); return; }
+    toggleFavorite(modalCurrentProductId);
+    updateModalFavBtn();
+}
 function openProductModal(productId) {
     modalCurrentProductId = productId;
     const modal = document.getElementById('product-modal');
@@ -464,14 +508,24 @@ function openProductModal(productId) {
     document.getElementById('modal-product-name').textContent = product.name;
     document.getElementById('modal-product-desc').textContent = product.desc || "";
     document.getElementById('modal-product-extra').innerHTML = `<p class="price">${product.price} جنيه</p>`;
+    updateModalFavBtn();
     modal.classList.add('open');
 }
 function closeProductModal() {
     document.getElementById('product-modal').classList.remove('open');
     modalCurrentProductId = null;
 }
+function updateModalFavBtn() {
+    const btn = document.getElementById('modal-add-fav');
+    if (!btn) return;
+    const isFav = favorites.includes(modalCurrentProductId);
+    btn.innerHTML = isFav ? "★ تمت الإضافة للمفضلة" : "☆ أضف للمفضلة";
+    if (isFav) btn.style.background = "#fbbf24";
+    else btn.style.background = "";
+}
 
-function addToCart(productId) {
+// --------- Cart/Fav DB ----------
+function addToCart(productId, fromModal = false) {
     const product = products.find(p => p.id === productId);
     if (!product) return;
     const cartItem = cart.find(item => item.id === productId);
@@ -484,6 +538,7 @@ function addToCart(productId) {
     saveCartToDB();
     renderCart();
     showToast('تم إضافة المنتج إلى السلة!', 'success');
+    if (fromModal) closeProductModal();
 }
 function updateCartItemQuantity(productId, action) {
     const cartItem = cart.find(item => item.id === productId);
@@ -521,6 +576,7 @@ function toggleFavorite(productId) {
     saveFavoritesToDB();
     renderProducts();
     renderFavorites();
+    updateModalFavBtn();
 }
 function saveFavorites() {
     if (!user) localStorage.setItem('fav_guest', JSON.stringify(favorites));
@@ -553,11 +609,19 @@ function applyCoupon() {
 async function handleCheckout() {
     if (!user) { openAuthModal(); showToast('سجّل الدخول أولاً لإتمام الطلب', 'error'); return; }
     if (!cart.length) { showToast('سلة التسوق فارغة', 'error'); return; }
+    // منع تكرار الطلبات خلال دقيقة
+    const now = Date.now();
+    if (now - lastOrderTime < 60000) {
+        showToast("يرجى الانتظار دقيقة قبل إرسال طلب جديد.", "error");
+        return;
+    }
+
     let total = cart.reduce((sum, item) => {
         const product = products.find(p => p.id === item.id);
         return sum + (product ? product.price * item.quantity : 0);
     }, 0);
     const couponCode = document.getElementById('coupon-code')?.value?.toUpperCase() || "";
+    let totalBefore = total;
     if (couponCode) {
         const coupon = Object.values(coupons).find(c => c.code === couponCode);
         if (coupon) {
@@ -567,12 +631,26 @@ async function handleCheckout() {
             total = Math.max(total, 0);
         }
     }
+    // رقم طلب فريد 5 أرقام (يزيد كل مرة)
+    const newOrderNumber = lastOrderId + 1;
+    try {
+        await setDoc(doc(db, "meta", "lastOrderId"), { value: newOrderNumber });
+        // حفظ رقم الطلب الجديد كآخر رقم
+        lastOrderId = newOrderNumber;
+    } catch (e) {
+        // fallback إذا فشل، استخدم التاريخ
+        lastOrderId = Math.floor(10000 + Math.random() * 89999);
+    }
+
     const order = {
         userId: user.uid,
         items: cart,
         total: total,
+        total_before_discount: totalBefore,
         status: 'review',
-        date: new Date().toISOString()
+        date: new Date().toISOString(),
+        coupon_code: couponCode || undefined,
+        order_number: lastOrderId
     };
     try {
         await addDoc(collection(db, "orders"), order);
@@ -582,6 +660,7 @@ async function handleCheckout() {
         renderCart();
         await loadOrders();
         renderOrders();
+        lastOrderTime = Date.now();
         showToast('تم إنشاء الطلب بنجاح!', 'success');
     } catch (error) {
         showToast(`خطأ: ${error.message}`, 'error');
