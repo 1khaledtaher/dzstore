@@ -1,5 +1,4 @@
-// DZ Store - نسخة حديثة بميزات: مفضلة، سلة، طلبات، بروفايل، حماية الصفحات، Toast، تصميم عصري
-// ملاحظة: تحتاج Firebase مشروعك وتهيئة قواعد Firestore/Auth
+// DZ Store - نسخة متجاوبة بالكامل للهاتف والتابلت والمكتب
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, GoogleAuthProvider, signInWithPopup, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
@@ -18,7 +17,6 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// حالة الجلسة
 let user = null;
 let products = [];
 let categories = [];
@@ -27,7 +25,7 @@ let favorites = [];
 let coupons = {};
 let orders = [];
 
-// --------- التنقل بين الصفحات (SPA بسيط) ----------
+// --------- SPA Routing ----------
 function showSection(section) {
     document.querySelectorAll('.page-section').forEach(sec => sec.style.display = 'none');
     const el = document.getElementById(section + '-section');
@@ -36,7 +34,6 @@ function showSection(section) {
     const activeLink = document.querySelector(`.nav-link[data-section="${section}"]`);
     if (activeLink) activeLink.classList.add('active');
 }
-
 function route() {
     let hash = location.hash.replace('#', '');
     if (!hash || !['home', 'favorites', 'cart', 'orders', 'profile'].includes(hash)) hash = 'home';
@@ -54,16 +51,28 @@ function route() {
 }
 window.addEventListener('hashchange', route);
 
-// --------- تحميل البيانات وتحديث الواجهة ----------
+// --------- Initializers ----------
 document.addEventListener('DOMContentLoaded', async () => {
     initApp();
     route();
+    // Hamburger menu
+    document.querySelector('.hamburger').addEventListener('click', openHamburgerMenu);
+    document.body.addEventListener('click', function(e) {
+      if (e.target.classList.contains('nav-link') || e.target.id === 'auth-btn') closeHamburgerMenu();
+      if (window.innerWidth < 800 && !e.target.closest('.nav-links') && !e.target.classList.contains('hamburger')) closeHamburgerMenu();
+    });
 });
+
+function openHamburgerMenu() {
+  document.querySelector('.nav-links').classList.add('open');
+}
+function closeHamburgerMenu() {
+  document.querySelector('.nav-links').classList.remove('open');
+}
 
 function initApp() {
     document.body.addEventListener('click', handleGlobalClick);
 
-    // auth events
     document.getElementById('login-btn').addEventListener('click', handleLogin);
     document.getElementById('signup-btn').addEventListener('click', handleSignup);
     document.getElementById('google-signin-btn').addEventListener('click', signInWithGoogle);
@@ -71,24 +80,16 @@ function initApp() {
     document.getElementById('apply-coupon').addEventListener('click', applyCoupon);
     document.getElementById('checkout-btn').addEventListener('click', handleCheckout);
 
-    document.getElementById('show-signup').addEventListener('click', e => {
-        e.preventDefault(); showSignupForm();
-    });
-    document.getElementById('show-login').addEventListener('click', e => {
-        e.preventDefault(); showLoginForm();
-    });
+    document.getElementById('show-signup').addEventListener('click', e => {e.preventDefault(); showSignupForm();});
+    document.getElementById('show-login').addEventListener('click', e => {e.preventDefault(); showLoginForm();});
 
     document.getElementById('logout-btn').addEventListener('click', handleLogout);
     document.getElementById('change-password-btn').addEventListener('click', handleChangePassword);
-    document.getElementById('refresh-profile-btn').addEventListener('click', () => {
-        showToast('تم تحديث البيانات!', 'success');
-        renderProfile();
-    });
+    document.getElementById('refresh-profile-btn').addEventListener('click', () => { showToast('تم تحديث البيانات!', 'success'); renderProfile(); });
 
     document.getElementById('search-filter').addEventListener('input', renderProducts);
     document.getElementById('category-filter').addEventListener('change', renderProducts);
 
-    // auth
     onAuthStateChanged(auth, async (currentUser) => {
         user = currentUser;
         updateAuthUI();
@@ -103,7 +104,7 @@ function initApp() {
     });
 }
 
-// تحديث واجهة الزر العلوي
+// --------- Auth UI ---------
 function updateAuthUI() {
     const authText = document.getElementById('auth-text');
     const authBtn = document.getElementById('auth-btn');
@@ -118,7 +119,7 @@ function updateAuthUI() {
     }
 }
 
-// تحميل بيانات المستخدم
+// --------- Load Data ---------
 async function loadUserData() {
     await loadProducts();
     await loadCategories();
@@ -128,8 +129,6 @@ async function loadUserData() {
     loadFavorites();
     renderContent();
 }
-
-// المنتجات، التصنيفات، الكوبونات، الطلبات
 async function loadProducts() {
     products = [];
     const querySnapshot = await getDocs(collection(db, "products"));
@@ -161,7 +160,6 @@ function loadFavorites() {
     favorites = JSON.parse(localStorage.getItem('fav_' + getUserKey())) || [];
     updateFavUI();
 }
-
 function renderContent() {
     renderProducts();
     renderCategories();
@@ -171,7 +169,7 @@ function renderContent() {
     renderProfile();
 }
 
-// --------- عرض المنتجات ----------
+// --------- Products ---------
 function renderProducts() {
     const container = document.getElementById('products-grid');
     if (!container) return;
@@ -203,8 +201,14 @@ function renderProducts() {
             </div>`;
         }).join('');
 }
+function renderCategories() {
+    const categoryFilter = document.getElementById('category-filter');
+    if (!categoryFilter) return;
+    categoryFilter.innerHTML = '<option value="all">كل التصنيفات</option>' +
+        categories.map(category => `<option value="${category.id}">${category.name}</option>`).join('');
+}
 
-// --------- المفضلة ----------
+// --------- Favorites ---------
 function renderFavorites() {
     const container = document.getElementById('favorites-grid');
     if (!container) return;
@@ -228,10 +232,10 @@ function renderFavorites() {
             </div>`).join('');
 }
 function updateFavUI() {
-    // تحديث رقم المفضلة في الـ Navbar إذا أردت
+    // يمكن إضافة عداد للمفضلة في الـ Navbar إذا رغبت
 }
 
-// --------- السلة ----------
+// --------- Cart ---------
 function renderCart() {
     const container = document.getElementById('cart-items');
     if (!container) return;
@@ -296,7 +300,7 @@ function updateCartUI() {
     }
 }
 
-// --------- الطلبات ----------
+// --------- Orders ---------
 function renderOrders() {
     const container = document.getElementById('orders-list');
     if (!container) return;
@@ -328,7 +332,7 @@ function renderOrders() {
     }).join('');
 }
 
-// --------- البروفايل ----------
+// --------- Profile ---------
 function renderProfile() {
     if (!user) return;
     document.getElementById('profile-fullname').textContent = user.displayName || user.email.split('@')[0];
@@ -337,7 +341,7 @@ function renderProfile() {
     document.getElementById('profile-avatar-img').src = `https://ui-avatars.com/api/?background=3b82f6&color=fff&name=${encodeURIComponent(user.displayName || user.email.charAt(0))}`;
 }
 
-// --------- إضافة للسلة/مفضلة ----------
+// --------- Cart/Fav Actions ----------
 function handleGlobalClick(e) {
     const target = e.target;
 
@@ -360,12 +364,9 @@ function handleGlobalClick(e) {
         const productId = target.dataset.productId;
         removeFromCart(productId);
     }
-    // إغلاق نافذة auth عند الضغط بالخارج
     const authModal = document.getElementById('auth-modal');
     if (authModal && target === authModal) closeAuthModal();
 }
-
-// --------- عمليات السلة والمفضلة ----------
 function addToCart(productId) {
     const product = products.find(p => p.id === productId);
     if (!product) return;
@@ -409,10 +410,7 @@ function toggleFavorite(productId) {
     renderProducts();
     renderFavorites();
 }
-
-function getUserKey() {
-    return user ? user.uid : "guest";
-}
+function getUserKey() { return user ? user.uid : "guest"; }
 
 // --------- كوبون الخصم ----------
 function applyCoupon() {
@@ -420,7 +418,7 @@ function applyCoupon() {
     showToast('تم تطبيق كود الخصم بنجاح!', 'success');
 }
 
-// --------- إتمام الطلب ----------
+// --------- Checkout ----------
 async function handleCheckout() {
     if (!user) { openAuthModal(); showToast('سجّل الدخول أولاً لإتمام الطلب', 'error'); return; }
     if (!cart.length) { showToast('سلة التسوق فارغة', 'error'); return; }
@@ -458,7 +456,7 @@ async function handleCheckout() {
     }
 }
 
-// --------- auth & profile ---------
+// --------- Auth & Profile ---------
 function handleLogin(e) {
     e.preventDefault();
     const email = document.getElementById('login-email')?.value;
@@ -509,7 +507,7 @@ function handleChangePassword() {
         .catch(error => showToast(`خطأ: ${error.message}`, 'error'));
 }
 
-// --------- auth modal ---------
+// --------- Auth Modal ---------
 function openAuthModal() {
     const authModal = document.getElementById('auth-modal');
     if (authModal) {
@@ -530,7 +528,7 @@ function showLoginForm() {
     document.getElementById('signup-form').classList.add('hidden');
 }
 
-// --------- رسائل Toast ---------
+// --------- Toast ---------
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     if (!container) return;
@@ -539,12 +537,4 @@ function showToast(message, type = 'info') {
     toast.textContent = message;
     container.appendChild(toast);
     setTimeout(() => toast.remove(), 2900);
-}
-
-// --------- التصنيفات ----------
-function renderCategories() {
-    const categoryFilter = document.getElementById('category-filter');
-    if (!categoryFilter) return;
-    categoryFilter.innerHTML = '<option value="all">كل التصنيفات</option>' +
-        categories.map(category => `<option value="${category.id}">${category.name}</option>`).join('');
 }
