@@ -3,81 +3,115 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>متجر دز ستور</title>
+  <title>DZ Store - متجر إلكتروني عصري</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <nav>
+  <nav id="navbar">
     <span class="logo">DZ Store</span>
     <div class="nav-links">
-      <a href="#featured">المميزة</a>
-      <a href="#products">المنتجات</a>
-      <a href="#orders">طلباتي</a>
-      <button class="auth-btn"><span id="auth-text">تسجيل الدخول</span></button>
-      <a href="#cart" style="position:relative;">
-        🛒 <span id="cart-count" style="font-size:0.95em; background:#fff; color:#3b82f6; border-radius:6px; padding:2px 7px; position:absolute; top:-9px; right:-18px;">0</span>
+      <a href="#home" class="nav-link active" data-section="home">الرئيسية</a>
+      <a href="#favorites" class="nav-link" data-section="favorites">المفضلة</a>
+      <a href="#cart" class="nav-link" data-section="cart">
+        السلة <span id="cart-count" class="badge">0</span>
       </a>
+      <a href="#orders" class="nav-link" data-section="orders">الطلبات</a>
+      <a href="#profile" class="nav-link" data-section="profile"><span id="profile-name">حسابي</span></a>
+      <button id="auth-btn"><span id="auth-text">تسجيل الدخول</span></button>
     </div>
     <button class="hamburger" aria-label="القائمة">☰</button>
   </nav>
-  <div class="container">
-    <section id="featured">
-      <h2>منتجات مميزة</h2>
-      <div id="featured-products-grid"></div>
-    </section>
-    <section id="products">
-      <h2>كل المنتجات</h2>
-      <div style="display:flex;gap:1em;align-items:center;margin-bottom:1em;">
+
+  <main>
+    <!-- الصفحة الرئيسية: المنتجات -->
+    <section class="page-section" id="home-section">
+      <h1>منتجاتنا</h1>
+      <div class="filters">
         <select id="category-filter"></select>
         <input id="search-filter" type="text" placeholder="ابحث عن منتج...">
       </div>
-      <div id="products-grid"></div>
+      <div id="products-grid" class="products-grid"></div>
     </section>
-    <section id="cart" style="margin-top:3em;">
-      <h2>عربة التسوق</h2>
+
+    <!-- صفحة المفضلة -->
+    <section class="page-section" id="favorites-section" style="display:none;">
+      <h1>المفضلة</h1>
+      <div id="favorites-grid" class="products-grid"></div>
+    </section>
+
+    <!-- صفحة السلة -->
+    <section class="page-section" id="cart-section" style="display:none;">
+      <h1>عربة التسوق</h1>
       <div id="cart-items"></div>
-      <div style="margin:1.5em 0;">
+      <div class="cart-summary">
         <input id="coupon-code" type="text" maxlength="15" placeholder="كود خصم؟">
         <button id="apply-coupon">تطبيق</button>
+        <div>
+          <span>الإجمالي: <b><span id="cart-total">0</span> جنيه</b></span>
+          <span id="discount-row" style="margin-right:1em;display:none;">
+            بعد الخصم: <b style="color:var(--primary)"><span id="cart-discounted-total">0</span> جنيه</b>
+          </span>
+        </div>
+        <button id="checkout-btn" class="big-btn">إتمام الطلب</button>
       </div>
-      <div style="font-size:1.17em;">
-        <span>الإجمالي: <b><span id="cart-total">0</span> جنيه</b></span>
-        <span id="discount-row" style="margin-right:2em;display:none;">
-          بعد الخصم: <b style="color:var(--primary)"><span id="cart-discounted-total">0</span> جنيه</b>
-        </span>
-      </div>
-      <button id="checkout-btn" style="margin:1.5em 0;font-size:1.1em;">إتمام الطلب</button>
     </section>
-    <section id="orders" style="margin-top:3em;">
-      <h2>طلباتي</h2>
+
+    <!-- صفحة الطلبات -->
+    <section class="page-section" id="orders-section" style="display:none;">
+      <h1>طلباتي</h1>
       <div id="orders-list"></div>
     </section>
-  </div>
-  <div id="toast-container"></div>
+
+    <!-- صفحة البروفايل -->
+    <section class="page-section" id="profile-section" style="display:none;">
+      <h1>حسابي</h1>
+      <div class="profile-container">
+        <div class="profile-avatar">
+          <img id="profile-avatar-img" src="https://ui-avatars.com/api/?name=?" alt="Avatar">
+        </div>
+        <div class="profile-info">
+          <p><b>الاسم:</b> <span id="profile-fullname">-</span></p>
+          <p><b>البريد:</b> <span id="profile-email">-</span></p>
+          <p><b>تاريخ التسجيل:</b> <span id="profile-date">-</span></p>
+          <button id="logout-btn" class="big-btn danger-btn">تسجيل الخروج</button>
+        </div>
+      </div>
+      <div class="profile-actions">
+        <button id="change-password-btn" class="small-btn">تغيير كلمة المرور</button>
+        <button id="refresh-profile-btn" class="small-btn">تحديث البيانات</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- نافذة تسجيل الدخول/إنشاء حساب -->
   <div id="auth-modal">
     <div class="auth-modal-content">
       <form id="login-form">
         <h3>تسجيل الدخول</h3>
         <input id="login-email" type="email" placeholder="البريد الإلكتروني" required>
         <input id="login-password" type="password" placeholder="كلمة المرور" required>
-        <button id="login-btn">دخول</button>
-        <div style="margin:.7em 0;">
-          <button type="button" id="google-signin-btn" style="background:#ea4335;">دخول عبر Google</button>
-        </div>
-        <p style="margin-top:1em;">ليس لديك حساب؟ <a href="#" id="show-signup">إنشاء حساب</a></p>
+        <button id="login-btn" class="big-btn">دخول</button>
+        <div class="auth-or">أو</div>
+        <button type="button" id="google-signin-btn" class="big-btn google-btn">دخول عبر Google</button>
+        <p>ليس لديك حساب؟ <a href="#" id="show-signup">إنشاء حساب</a></p>
       </form>
       <form id="signup-form" class="hidden" style="display:none;">
         <h3>إنشاء حساب جديد</h3>
         <input id="signup-email" type="email" placeholder="البريد الإلكتروني" required>
         <input id="signup-password" type="password" placeholder="كلمة المرور" required>
-        <button id="signup-btn">تسجيل</button>
-        <div style="margin:.7em 0;">
-          <button type="button" id="google-signup-btn" style="background:#ea4335;">تسجيل عبر Google</button>
-        </div>
-        <p style="margin-top:1em;">لديك حساب؟ <a href="#" id="show-login">دخول</a></p>
+        <button id="signup-btn" class="big-btn">تسجيل</button>
+        <div class="auth-or">أو</div>
+        <button type="button" id="google-signup-btn" class="big-btn google-btn">تسجيل عبر Google</button>
+        <p>لديك حساب؟ <a href="#" id="show-login">دخول</a></p>
       </form>
     </div>
   </div>
+
+  <div id="toast-container"></div>
+  <footer>
+    <p>جميع الحقوق محفوظة &copy; 2025 دز ستور</p>
+    <p>تم الإنشاء بواسطة Khaled Taher + Copilot 🚀</p>
+  </footer>
   <script type="module" src="script.js"></script>
 </body>
 </html>
