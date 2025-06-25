@@ -3,185 +3,207 @@
 <head>
   <meta charset="UTF-8">
   <title>DZ Store</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
-  <!-- CSS File -->
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    /* CSS بسيط للعرض */
+    body { font-family: Arial, sans-serif; background: #f7f7f7; margin: 0; }
+    .navbar { background: #3b82f6; color: #fff; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; }
+    .nav-links { display: flex; gap: 10px; }
+    .nav-link.active { font-weight: bold; text-decoration: underline; }
+    .container { max-width: 900px; margin: 24px auto; background: #fff; padding: 20px; border-radius: 8px; }
+    .products-grid, .category-block .products-grid { display: flex; flex-wrap: wrap; gap: 16px; }
+    .product-card { background: #f1f1f9; border-radius: 8px; padding: 12px; width: 200px; text-align: center; box-shadow: 0 1px 3px #ddd; }
+    .product-card img { width: 100%; border-radius: 8px; }
+    .product-actions button { margin: 4px; }
+    .favorite, .fav { color: gold; }
+    .empty-message { color: #777; text-align: center; padding: 24px 0; }
+    .hidden { display: none; }
+    .page-section { display: none; }
+    .toast { position: fixed; right: 24px; bottom: 24px; background: #333; color: #fff; padding: 10px 24px; border-radius: 30px; opacity: 0.93; margin-top: 10px; }
+    #toast-container { position: fixed; right: 24px; bottom: 24px; z-index: 10000; }
+    #loading-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.8); z-index: 9999; align-items: center; justify-content: center; font-size: 2em; color: #3b82f6; }
+    /* Modal styles */
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 10001; }
+    .modal.open { display: flex; }
+    .modal-content { background: #fff; padding: 20px 32px; border-radius: 10px; min-width: 300px; }
+    .cart-item, .order-card { background: #fafafc; border-radius: 7px; padding: 12px; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 14px; }
+    .cart-item img { width: 60px; border-radius: 6px; }
+    .order-header { display: flex; align-items: center; justify-content: space-between; }
+    .order-status.review { color: orange; }
+    .order-status.shipping { color: #3b82f6; }
+    .order-status.delivered { color: green; }
+    .order-status.cancelled { color: #a00; }
+    .order-status.returned { color: purple; }
+    .small-btn { font-size: 13px; padding: 4px 12px; }
+    .danger-btn { background: #a00; color: #fff; border: none; border-radius: 4px; }
+    .hamburger { display: none; cursor: pointer; }
+    @media (max-width: 800px) {
+      .container { padding: 8px; }
+      .products-grid, .category-block .products-grid { flex-direction: column; }
+      .nav-links { flex-direction: column; position: absolute; background: #3b82f6; right: 0; top: 60px; min-width: 120px; display: none; }
+      .nav-links.open { display: flex; }
+      .hamburger { display: block; }
+    }
+  </style>
 </head>
 <body>
-  <!-- Loading overlay -->
-  <div id="loading-overlay" style="display:none;">
-    <div class="spinner"></div>
+
+<div class="navbar">
+  <span style="font-weight:bold">DZ Store</span>
+  <div class="nav-links">
+    <a class="nav-link" data-section="home" href="#home">الرئيسية</a>
+    <a class="nav-link" data-section="shop" href="#shop">المتجر</a>
+    <a class="nav-link" data-section="favorites" href="#favorites">المفضلة <span id="fav-count"></span></a>
+    <a class="nav-link" data-section="cart" href="#cart">السلة <span id="cart-count"></span></a>
+    <a class="nav-link" data-section="orders" href="#orders">طلباتي</a>
+    <a class="nav-link" data-section="profile" href="#profile">حسابي</a>
+    <a class="nav-link" data-section="about" href="#about">عن المتجر</a>
+  </div>
+  <span class="hamburger">☰</span>
+  <button id="share-btn" style="margin-right:10px;">مشاركة</button>
+  <button id="auth-btn"><span id="auth-text">تسجيل الدخول</span></button>
+</div>
+
+<div id="loading-overlay">جاري التحميل...</div>
+<div id="toast-container"></div>
+
+<div class="container">
+
+  <!-- الرئيسية -->
+  <div id="home-section" class="page-section">
+    <h2>مرحباً بك في متجرنا</h2>
+    <div id="home-greeting"></div>
+    <h3>المنتجات المميزة</h3>
+    <div id="featured-products-grid" class="products-grid"></div>
+    <button id="show-all-featured">عرض جميع المنتجات</button>
   </div>
 
-  <!-- Main Navigation -->
-  <nav>
-    <div class="logo">DZ Store</div>
-    <button class="hamburger" aria-label="القائمة">&#9776;</button>
-    <div class="nav-links">
-      <button class="nav-link" data-section="home">الرئيسية</button>
-      <button class="nav-link" data-section="shop">المتجر</button>
-      <button class="nav-link" data-section="favorites">المفضلة</button>
-      <button class="nav-link" data-section="cart">السلة <span id="cart-count" class="badge">0</span></button>
-      <button class="nav-link" data-section="orders">الطلبات</button>
-      <button class="nav-link" data-section="profile">حسابي</button>
-      <button class="nav-link" data-section="about">من نحن</button>
-      <button id="auth-btn"><span id="auth-text">تسجيل الدخول</span></button>
+  <!-- المتجر -->
+  <div id="shop-section" class="page-section">
+    <h2>كل المنتجات</h2>
+    <div style="margin-bottom:16px;">
+      <select id="shop-category-filter"></select>
+      <select id="shop-sort-filter">
+        <option value="default">الترتيب الافتراضي</option>
+        <option value="price-low">الأقل سعراً</option>
+        <option value="price-high">الأعلى سعراً</option>
+      </select>
+      <select id="shop-type-filter">
+        <option value="flat">قائمة المنتجات</option>
+        <option value="categories">حسب التصنيفات</option>
+      </select>
+      <input id="shop-search-filter" placeholder="ابحث عن منتج...">
     </div>
-  </nav>
+    <div id="shop-products-grid" class="products-grid"></div>
+  </div>
 
-  <main>
-    <!-- الصفحة الرئيسية -->
-    <section id="home-section" class="page-section">
-      <div id="home-greeting" class="greeting"></div>
-      <h2>منتجات مميزة</h2>
-      <div id="featured-products-grid" class="products-grid"></div>
-      <div class="featured-more">
-        <button id="show-all-featured" class="cta-button">عرض كل المنتجات</button>
-      </div>
-    </section>
+  <!-- المفضلة -->
+  <div id="favorites-section" class="page-section">
+    <h2>المفضلة</h2>
+    <div id="favorites-grid" class="products-grid"></div>
+  </div>
 
-    <!-- صفحة المتجر -->
-    <section id="shop-section" class="page-section" style="display:none;">
-      <h2>تسوق المنتجات</h2>
-      <div class="shop-filters">
-        <select id="shop-category-filter"></select>
-        <select id="shop-sort-filter">
-          <option value="recent">الأحدث</option>
-          <option value="price-low">السعر الأقل</option>
-          <option value="price-high">السعر الأعلى</option>
-        </select>
-        <select id="shop-type-filter">
-          <option value="products">منتجات فقط</option>
-          <option value="categories">حسب التصنيف</option>
-        </select>
-        <input id="shop-search-filter" type="search" placeholder="بحث عن منتج...">
-      </div>
-      <div id="shop-products-grid" class="products-grid"></div>
-    </section>
-
-    <!-- صفحة المفضلة -->
-    <section id="favorites-section" class="page-section" style="display:none;">
-      <h2>المفضلة</h2>
-      <div id="favorites-grid" class="products-grid"></div>
-    </section>
-
-    <!-- صفحة السلة -->
-    <section id="cart-section" class="page-section" style="display:none;">
-      <h2>سلة التسوق</h2>
-      <div id="cart-items"></div>
-      <div class="cart-summary">
-        <div>الإجمالي: <span id="cart-total">0</span> جنيه</div>
+  <!-- السلة -->
+  <div id="cart-section" class="page-section">
+    <h2>سلة التسوق</h2>
+    <div id="cart-items"></div>
+    <div style="margin-top:14px;">
+      <input id="coupon-code" placeholder="كود الخصم (إن وجد)">
+      <button id="apply-coupon">تطبيق الكوبون</button>
+      <div>
+        <p>الإجمالي: <span id="cart-total">0</span> جنيه</p>
         <div id="discount-row" style="display:none;">
-          بعد الخصم: <span id="cart-discounted-total">0</span> جنيه
-        </div>
-        <input id="coupon-code" type="text" placeholder="كود الخصم">
-        <button id="apply-coupon" class="coupon-btn">تطبيق الكوبون</button>
-        <button id="checkout-btn" class="big-btn">إتمام الطلب</button>
-      </div>
-    </section>
-
-    <!-- صفحة الطلبات -->
-    <section id="orders-section" class="page-section" style="display:none;">
-      <h2>كل الطلبات</h2>
-      <div id="orders-list"></div>
-    </section>
-
-    <!-- صفحة البروفايل -->
-    <section id="profile-section" class="page-section" style="display:none;">
-      <h2>حسابي</h2>
-      <div class="profile-container">
-        <div class="profile-avatar">
-          <img id="profile-avatar-img" src="" alt="Avatar">
-        </div>
-        <div class="profile-info">
-          <h3 id="profile-fullname"></h3>
-          <p id="profile-email"></p>
-          <p id="profile-date"></p>
-          <div class="profile-actions">
-            <button id="edit-profile-btn" class="big-btn">تعديل بياناتي</button>
-            <button id="refresh-profile-btn" class="small-btn" style="display:none;">تحديث البيانات</button>
-            <button id="change-password-btn" class="small-btn">تغيير كلمة المرور</button>
-          </div>
+          <p>بعد الخصم: <span id="cart-discounted-total">0</span> جنيه</p>
         </div>
       </div>
-    </section>
+      <button id="checkout-btn">إتمام الطلب</button>
+    </div>
+  </div>
 
-    <!-- صفحة من نحن -->
-    <section id="about-section" class="page-section" style="display:none;">
-      <div class="about-content">
-        <h2>من نحن</h2>
-        <p>مرحبا بكم في DZ Store - وجهتك الأولى للتسوق الإلكتروني!</p>
-        <!-- أضف وصف المتجر أو بيانات التواصل حسب حاجتك -->
-      </div>
-    </section>
-  </main>
+  <!-- الطلبات -->
+  <div id="orders-section" class="page-section">
+    <h2>طلباتي</h2>
+    <div id="orders-list"></div>
+  </div>
 
-  <!-- نافذة إكمال البيانات -->
-  <div id="profile-complete-modal" style="display:none;">
-    <form id="profile-complete-form" class="profile-complete-content">
-      <h3>إكمال البيانات الشخصية</h3>
-      <input id="full-name-input" type="text" placeholder="الاسم الكامل *" required>
-      <input id="phone-input" type="text" placeholder="رقم الجوال *" required>
-      <input id="phone2-input" type="text" placeholder="رقم إضافي (اختياري)">
-      <input id="address-input" type="text" placeholder="العنوان بالتفصيل *" required>
-      <input id="landmark-input" type="text" placeholder="علامة مميزة (اختياري)">
-      <div style="display:flex;gap:.7em;">
-        <button type="submit" class="big-btn">حفظ البيانات</button>
-        <button type="button" id="skip-profile-btn" class="small-btn">تخطي الآن</button>
-      </div>
+  <!-- الحساب الشخصي -->
+  <div id="profile-section" class="page-section">
+    <h2>حسابي</h2>
+    <img id="profile-avatar-img" src="" style="width:96px; border-radius:50%; margin-bottom:12px;">
+    <div><strong>الاسم:</strong> <span id="profile-fullname"></span></div>
+    <div><strong>البريد:</strong> <span id="profile-email"></span></div>
+    <div><strong>تاريخ الإنشاء:</strong> <span id="profile-date"></span></div>
+    <button id="edit-profile-btn">تعديل البيانات</button>
+    <button id="refresh-profile-btn" style="display:none;">تحديث البيانات</button>
+    <button id="logout-btn">تسجيل الخروج</button>
+  </div>
+
+  <!-- عن المتجر -->
+  <div id="about-section" class="page-section">
+    <h2>عن المتجر</h2>
+    <p>متجر إلكتروني بسيط تجريبي مبني بـ Firebase و JavaScript</p>
+  </div>
+</div>
+
+<!-- نافذة المنتج -->
+<div id="product-modal" class="modal">
+  <div class="modal-content" style="min-width:280px;">
+    <span id="close-product-modal" style="float:left;cursor:pointer;">✕</span>
+    <img id="modal-product-img" src="" style="width: 100%; margin-bottom:10px;">
+    <h3 id="modal-product-name"></h3>
+    <p id="modal-product-desc"></p>
+    <div id="modal-product-extra"></div>
+    <button id="modal-add-cart">أضف للسلة</button>
+    <button id="modal-add-fav">☆ أضف للمفضلة</button>
+  </div>
+</div>
+
+<!-- نافذة إكمال البيانات -->
+<div id="profile-complete-modal" class="modal">
+  <div class="modal-content">
+    <h3>يرجى إكمال بياناتك الشخصية</h3>
+    <form id="profile-complete-form">
+      <input id="full-name-input" placeholder="الاسم الكامل" required><br>
+      <input id="phone-input" placeholder="رقم الهاتف" required><br>
+      <input id="phone2-input" placeholder="رقم هاتف إضافي (اختياري)"><br>
+      <input id="address-input" placeholder="العنوان الكامل" required><br>
+      <input id="landmark-input" placeholder="علامة مميزة بالقرب منك"><br>
+      <button type="submit">حفظ</button>
+      <button type="button" id="skip-profile-btn">تخطي</button>
     </form>
   </div>
+</div>
 
-  <!-- نافذة تسجيل الدخول/التسجيل -->
-  <div id="auth-modal" class="auth-modal">
-    <div class="auth-modal-content">
-      <form id="login-form">
-        <h3>تسجيل الدخول</h3>
-        <input id="login-email" type="email" placeholder="البريد الإلكتروني" required>
-        <input id="login-password" type="password" placeholder="كلمة المرور" required>
-        <button id="login-btn" class="big-btn" type="submit">دخول</button>
-        <div class="auth-or">أو</div>
-        <button id="google-signin-btn" class="google-btn" type="button">دخول عبر Google</button>
-        <div style="margin-top:1em;">
-          <a href="#" id="show-signup">إنشاء حساب جديد</a>
-        </div>
-      </form>
-      <form id="signup-form" class="hidden">
-        <h3>إنشاء حساب جديد</h3>
-        <input id="signup-email" type="email" placeholder="البريد الإلكتروني" required>
-        <input id="signup-password" type="password" placeholder="كلمة المرور" required>
-        <button id="signup-btn" class="big-btn" type="submit">تسجيل</button>
-        <div class="auth-or">أو</div>
-        <button id="google-signup-btn" class="google-btn" type="button">تسجيل عبر Google</button>
-        <div style="margin-top:1em;">
-          <a href="#" id="show-login">لديك حساب؟ دخول</a>
-        </div>
-      </form>
-      <span id="close-auth-modal" style="position:absolute;top:10px;left:15px;cursor:pointer;">&times;</span>
-    </div>
-  </div>
-
-  <!-- نافذة تفاصيل المنتج -->
-  <div id="product-modal" class="product-modal">
-    <div class="product-modal-content">
-      <span id="close-product-modal">&times;</span>
-      <img id="modal-product-img" src="" alt="">
-      <h2 id="modal-product-name"></h2>
-      <p id="modal-product-desc"></p>
-      <div id="modal-product-extra"></div>
-      <div class="modal-actions">
-        <button id="modal-add-cart" class="cta-button">أضف للسلة</button>
-        <button id="modal-add-fav" class="add-to-fav-btn">أضف للمفضلة</button>
+<!-- نافذة تسجيل الدخول / إنشاء حساب -->
+<div id="auth-modal" class="modal">
+  <div class="modal-content" style="min-width:300px;">
+    <span style="float:left;cursor:pointer;" onclick="document.getElementById('auth-modal').classList.remove('open')">✕</span>
+    <div id="login-form">
+      <h3>تسجيل الدخول</h3>
+      <input id="login-email" placeholder="البريد الإلكتروني"><br>
+      <input id="login-password" type="password" placeholder="كلمة المرور"><br>
+      <button id="login-btn">دخول</button>
+      <div style="margin:10px 0;">
+        <button id="google-signin-btn">دخول بـ Google</button>
       </div>
+      <a href="#" id="show-signup">ليس لديك حساب؟ إنشاء حساب جديد</a>
+    </div>
+    <div id="signup-form" class="hidden">
+      <h3>إنشاء حساب</h3>
+      <input id="signup-email" placeholder="البريد الإلكتروني"><br>
+      <input id="signup-password" type="password" placeholder="كلمة المرور"><br>
+      <button id="signup-btn">تسجيل</button>
+      <div style="margin:10px 0;">
+        <button id="google-signup-btn">تسجيل بـ Google</button>
+      </div>
+      <a href="#" id="show-login">لديك حساب؟ تسجيل الدخول</a>
     </div>
   </div>
+</div>
 
-  <!-- Toast Notifications -->
-  <div id="toast-container"></div>
+<!-- السكربتات -->
+<script src="script.js"></script>
+<script src="share-modal.js"></script>
 
-  <!-- سكربت المتجر -->
-  <script type="module" src="script.js"></script>
 </body>
 </html>
