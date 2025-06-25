@@ -7,6 +7,11 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- شاشة التحميل -->
+  <div id="loading-overlay">
+    <div class="spinner"></div>
+  </div>
+
   <nav id="navbar">
     <button class="hamburger" aria-label="القائمة">&#9776;</button>
     <span class="logo">DZ Store</span>
@@ -24,8 +29,9 @@
   </nav>
 
   <main>
-    <!-- الصفحة الرئيسية: منتجات مميزة -->
+    <!-- الصفحة الرئيسية: منتجات مميزة + ترحيب -->
     <section class="page-section" id="home-section">
+      <div id="home-greeting" class="greeting"></div>
       <h1>منتجات مميزة</h1>
       <div id="featured-products-grid" class="products-grid"></div>
       <div class="featured-more">
@@ -117,7 +123,7 @@
         <button id="login-btn" class="big-btn">دخول</button>
         <div class="auth-or">أو</div>
         <button type="button" id="google-signin-btn" class="big-btn google-btn">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google" class="google-icon"> دخول عبر Google
+          دخول عبر Google
         </button>
         <p>ليس لديك حساب؟ <a href="#" id="show-signup">إنشاء حساب</a></p>
       </form>
@@ -128,7 +134,7 @@
         <button id="signup-btn" class="big-btn">تسجيل</button>
         <div class="auth-or">أو</div>
         <button type="button" id="google-signup-btn" class="big-btn google-btn">
-          <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google" class="google-icon"> تسجيل عبر Google
+          تسجيل عبر Google
         </button>
         <p>لديك حساب؟ <a href="#" id="show-login">دخول</a></p>
       </form>
@@ -152,7 +158,7 @@
 
   <div id="toast-container"></div>
   <footer>
-    <p>جميع الحقوق محفوظة &copy; 2025 دز ستور</p>
+    <p>جميع الحقوق محفوظة - DZ Store</p>
   </footer>
   <script type="module" src="script.js"></script>
 </body>
