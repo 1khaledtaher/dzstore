@@ -5,45 +5,7 @@
   <title>DZ Store</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    /* CSS بسيط للعرض */
-    body { font-family: Arial, sans-serif; background: #f7f7f7; margin: 0; }
-    .navbar { background: #3b82f6; color: #fff; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; }
-    .nav-links { display: flex; gap: 10px; }
-    .nav-link.active { font-weight: bold; text-decoration: underline; }
-    .container { max-width: 900px; margin: 24px auto; background: #fff; padding: 20px; border-radius: 8px; }
-    .products-grid, .category-block .products-grid { display: flex; flex-wrap: wrap; gap: 16px; }
-    .product-card { background: #f1f1f9; border-radius: 8px; padding: 12px; width: 200px; text-align: center; box-shadow: 0 1px 3px #ddd; }
-    .product-card img { width: 100%; border-radius: 8px; }
-    .product-actions button { margin: 4px; }
-    .favorite, .fav { color: gold; }
-    .empty-message { color: #777; text-align: center; padding: 24px 0; }
-    .hidden { display: none; }
-    .page-section { display: none; }
-    .toast { position: fixed; right: 24px; bottom: 24px; background: #333; color: #fff; padding: 10px 24px; border-radius: 30px; opacity: 0.93; margin-top: 10px; }
-    #toast-container { position: fixed; right: 24px; bottom: 24px; z-index: 10000; }
-    #loading-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.8); z-index: 9999; align-items: center; justify-content: center; font-size: 2em; color: #3b82f6; }
-    /* Modal styles */
-    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 10001; }
-    .modal.open { display: flex; }
-    .modal-content { background: #fff; padding: 20px 32px; border-radius: 10px; min-width: 300px; }
-    .cart-item, .order-card { background: #fafafc; border-radius: 7px; padding: 12px; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 14px; }
-    .cart-item img { width: 60px; border-radius: 6px; }
-    .order-header { display: flex; align-items: center; justify-content: space-between; }
-    .order-status.review { color: orange; }
-    .order-status.shipping { color: #3b82f6; }
-    .order-status.delivered { color: green; }
-    .order-status.cancelled { color: #a00; }
-    .order-status.returned { color: purple; }
-    .small-btn { font-size: 13px; padding: 4px 12px; }
-    .danger-btn { background: #a00; color: #fff; border: none; border-radius: 4px; }
-    .hamburger { display: none; cursor: pointer; }
-    @media (max-width: 800px) {
-      .container { padding: 8px; }
-      .products-grid, .category-block .products-grid { flex-direction: column; }
-      .nav-links { flex-direction: column; position: absolute; background: #3b82f6; right: 0; top: 60px; min-width: 120px; display: none; }
-      .nav-links.open { display: flex; }
-      .hamburger { display: block; }
-    }
+    /* ... (يُترك الستايل كما هو في ملفك القديم) ... */
   </style>
 </head>
 <body>
@@ -60,7 +22,6 @@
     <a class="nav-link" data-section="about" href="#about">عن المتجر</a>
   </div>
   <span class="hamburger">☰</span>
-  <button id="share-btn" style="margin-right:10px;">مشاركة</button>
   <button id="auth-btn"><span id="auth-text">تسجيل الدخول</span></button>
 </div>
 
@@ -203,7 +164,7 @@
 
 <!-- السكربتات -->
 <script src="script.js"></script>
-<script src="share-modal.js"></script>
+<!-- لاحظ: لم نضف share-modal.js ولا أي سكربت للطباعة هنا -->
 
 </body>
 </html>
