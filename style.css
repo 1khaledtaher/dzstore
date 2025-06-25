@@ -593,25 +593,6 @@ button {
   gap: 0.7em;
 }
 
-.about-content {
-  text-align: center;
-  padding: 2em 0;
-}
-.fb-btn {
-  background: #1877f2;
-  color: #fff;
-  border-radius: 8px;
-  font-size: 1.1em;
-  margin-top: 1.1em;
-  padding: 0.6em 2.3em;
-  display: inline-block;
-  text-decoration: none;
-  transition: background 0.19s;
-}
-.fb-btn:hover {
-  background: #145db2;
-}
-
 footer {
   background: #e6e9f2;
   color: #444;
@@ -641,7 +622,6 @@ footer p:after {
     box-shadow: none;
     gap: 1.1em;
     justify-content: center;
-    align-items: center;
   }
   #auth-btn { margin: 0; }
 }
@@ -672,26 +652,6 @@ footer p:after {
   }
   .product-modal-content {
     max-width: 97vw;
-  }
-  .nav-links {
-    flex-direction: column;
-    gap: 1.1em;
-    align-items: center;
-    justify-content: center;
-    transition: right 0.3s;
-    direction: rtl;
-    position: fixed;
-    top: 0;
-    right: -100vw;
-    width: 70vw;
-    height: 100vh;
-    background: var(--primary);
-    box-shadow: -4px 0 25px rgba(0,0,0,0.07);
-    z-index: 200;
-    padding: 0;
-  }
-  .nav-links.open {
-    right: 0;
   }
 }
 
