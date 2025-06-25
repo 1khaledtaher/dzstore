@@ -12,6 +12,7 @@
     <button class="hamburger" aria-label="القائمة">&#9776;</button>
     <div class="nav-links">
       <a href="#home" class="nav-link active" data-section="home">الرئيسية</a>
+      <a href="#shop" class="nav-link" data-section="shop">التسوق</a>
       <a href="#favorites" class="nav-link" data-section="favorites">المفضلة</a>
       <a href="#cart" class="nav-link" data-section="cart">
         السلة <span id="cart-count" class="badge">0</span>
@@ -23,14 +24,32 @@
   </nav>
 
   <main>
-    <!-- الصفحة الرئيسية: المنتجات -->
+    <!-- الصفحة الرئيسية: منتجات مميزة -->
     <section class="page-section" id="home-section">
-      <h1>منتجاتنا</h1>
-      <div class="filters">
-        <select id="category-filter"></select>
-        <input id="search-filter" type="text" placeholder="ابحث عن منتج...">
+      <h1>منتجات مميزة</h1>
+      <div id="featured-products-grid" class="products-grid"></div>
+      <div class="featured-more">
+        <button id="show-all-featured" class="big-btn">عرض الكل</button>
       </div>
-      <div id="products-grid" class="products-grid"></div>
+    </section>
+
+    <!-- صفحة التسوق: كل المنتجات مع الفلترة والبحث -->
+    <section class="page-section" id="shop-section" style="display:none;">
+      <h1>التسوق</h1>
+      <div class="shop-filters">
+        <select id="shop-category-filter"></select>
+        <select id="shop-sort-filter">
+          <option value="default">الترتيب الافتراضي</option>
+          <option value="price-high">من الأغلى للأرخص</option>
+          <option value="price-low">من الأرخص للأغلى</option>
+        </select>
+        <select id="shop-type-filter">
+          <option value="all">عرض كل العناصر</option>
+          <option value="categories">عرض الأقسام فقط</option>
+        </select>
+        <input id="shop-search-filter" type="text" placeholder="ابحث عن منتج...">
+      </div>
+      <div id="shop-products-grid" class="products-grid"></div>
     </section>
 
     <!-- صفحة المفضلة -->
@@ -83,7 +102,6 @@
         </div>
       </div>
       <div class="profile-actions">
-        <button id="change-password-btn" class="small-btn">تغيير كلمة المرور</button>
         <button id="refresh-profile-btn" class="small-btn">تحديث البيانات</button>
       </div>
     </section>
@@ -98,7 +116,9 @@
         <input id="login-password" type="password" placeholder="كلمة المرور" required>
         <button id="login-btn" class="big-btn">دخول</button>
         <div class="auth-or">أو</div>
-        <button type="button" id="google-signin-btn" class="big-btn google-btn">دخول عبر Google</button>
+        <button type="button" id="google-signin-btn" class="big-btn google-btn">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google" class="google-icon"> دخول عبر Google
+        </button>
         <p>ليس لديك حساب؟ <a href="#" id="show-signup">إنشاء حساب</a></p>
       </form>
       <form id="signup-form" class="hidden" style="display:none;">
@@ -107,16 +127,32 @@
         <input id="signup-password" type="password" placeholder="كلمة المرور" required>
         <button id="signup-btn" class="big-btn">تسجيل</button>
         <div class="auth-or">أو</div>
-        <button type="button" id="google-signup-btn" class="big-btn google-btn">تسجيل عبر Google</button>
+        <button type="button" id="google-signup-btn" class="big-btn google-btn">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google" class="google-icon"> تسجيل عبر Google
+        </button>
         <p>لديك حساب؟ <a href="#" id="show-login">دخول</a></p>
       </form>
+    </div>
+  </div>
+
+  <!-- نافذة منبثقة لعرض تفاصيل المنتج -->
+  <div id="product-modal">
+    <div class="product-modal-content">
+      <span id="close-product-modal">&times;</span>
+      <img id="modal-product-img" src="" alt="Product" />
+      <h2 id="modal-product-name"></h2>
+      <p id="modal-product-desc"></p>
+      <div id="modal-product-extra"></div>
+      <div class="modal-actions">
+        <button id="modal-add-cart" class="big-btn">أضف للسلة</button>
+        <button id="modal-add-fav" class="add-to-fav-btn">أضف للمفضلة</button>
+      </div>
     </div>
   </div>
 
   <div id="toast-container"></div>
   <footer>
     <p>جميع الحقوق محفوظة &copy; 2025 دز ستور</p>
-    <p>تم الإنشاء بواسطة Khaled Taher + Copilot 🚀</p>
   </footer>
   <script type="module" src="script.js"></script>
 </body>
