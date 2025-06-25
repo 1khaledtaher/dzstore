@@ -1,79 +1,36 @@
-// =================================================================
-// 0. FIREBASE CONFIGURATION
-// =================================================================
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, FacebookAuthProvider } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+import { getFirestore, collection, getDocs, addDoc, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
-// هام جدا: استبدل هذا الكائن بالبيانات من حسابك في Firebase
+// Firebase Configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBV_kaqlAtLTBNEcIHpc0rWHTbWXdgsXME",
-  authDomain: "store-b5352.firebaseapp.com",
-  projectId: "store-b5352",
-  storageBucket: "store-b5352.firebasestorage.app",
-  messagingSenderId: "994825915869",
-  appId: "1:994825915869:web:57e664699a45b3d2fa3a34",
-  measurementId: "G-KGZHS02V07"
+    apiKey: "AIzaSyBV_kaqlAtLTBNEcIHpc0rWHTbWXdgsXME",
+    authDomain: "store-b5352.firebaseapp.com",
+    projectId: "store-b5352",
+    storageBucket: "store-b5352.firebasestorage.app",
+    messagingSenderId: "994825915869",
+    appId: "1:994825915869:web:57e664699a45b3d2fa3a34",
+    measurementId: "G-KGZHS02V07"
 };
 
 // Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-
-// =================================================================
-// 1. DUMMY DATA & CONFIG
-// =================================================================
-const dummyCategories = ["أساور", "خواتم", "سلاسل", "أقراط"];
-const dummyProducts = [
-    // ... (بيانات المنتجات كما هي)
-    { id: 1, name: "سوار الفراشة الذهبية", desc: "سوار رقيق بتصميم فراشة مطلية بالذهب، مثالي للمناسبات اليومية والخاصة.", price: 120, img: "https://i.ibb.co/hZ8C7xS/p1.jpg", gallery: ["https://i.ibb.co/hZ8C7xS/p1.jpg", "https://i.ibb.co/2d1hVmM/p7.jpg", "https://i.ibb.co/P9W8pXb/p6.jpg"], category: "أساور", featured: true },
-    { id: 5, name: "سوار الحروف الشخصي", desc: "سوار يمكنك تخصيصه بحرف من اختيارك.", price: 130, img: "https://i.ibb.co/Xz9tH4D/p5.jpg", gallery: ["https://i.ibb.co/Xz9tH4D/p5.jpg"], category: "أساور" },
-    { id: 9, name: "سوار التنس الفضي", desc: "سوار تنس كلاسيكي مرصع بالزركون.", price: 250, img: "https://i.ibb.co/bFHt3T6/p9.jpg", category: "أساور" },
-    { id: 13, name: "سوار الخرز الملون", desc: "سوار حيوي مصنوع من الخرز الزجاجي الملون.", price: 75, img: "https://i.ibb.co/zPq1P5X/p13.jpg", category: "أساور" },
-    { id: 17, name: "سوار جلدي مضفر", desc: "سوار عصري من الجلد الطبيعي.", price: 90, img: "https://i.ibb.co/WcWzXQ1/p17.jpg", category: "أساور" },
-    { id: 2, name: "خاتم النجمة الفضية", desc: "خاتم أنيق من الفضة الإسترليني عيار 925.", price: 95, img: "https://i.ibb.co/pX1g1Pj/p2.jpg", gallery: ["https://i.ibb.co/pX1g1Pj/p2.jpg"], category: "خواتم" },
-    { id: 6, name: "خاتم الأمواج", desc: "تصميم عصري مستوحى من أمواج البحر.", price: 110, img: "https://i.ibb.co/P9W8pXb/p6.jpg", gallery: ["https://i.ibb.co/P9W8pXb/p6.jpg"], category: "خواتم", featured: true },
-    { id: 10, name: "خاتم التاج الملكي", desc: "خاتم بتصميم تاج مرصع بالفصوص اللامعة.", price: 140, img: "https://i.ibb.co/hVqXyWv/p10.jpg", category: "خواتم" },
-    { id: 14, name: "خاتم قابل للتعديل", desc: "خاتم بتصميم مفتوح يناسب جميع المقاسات.", price: 85, img: "https://i.ibb.co/rpx7sHq/p14.jpg", category: "خواتم" },
-    { id: 18, name: "خاتم سوليتير", desc: "خاتم خطبة كلاسيكي بفص واحد كبير.", price: 300, img: "https://i.ibb.co/hD8J4tP/p18.jpg", category: "خواتم" },
-    { id: 3, name: "سلسلة القلب الكريستالي", desc: "سلسلة ناعمة مع قلادة على شكل قلب.", price: 150, img: "https://i.ibb.co/L8dMh21/p3.jpg", gallery: ["https://i.ibb.co/L8dMh21/p3.jpg", "https://i.ibb.co/Xz9tH4D/p5.jpg"], category: "سلاسل" },
-    { id: 7, name: "سلسلة الطبقات الفضية", desc: "مجموعة من سلسلتين لمظهر متكامل.", price: 180, img: "https://i.ibb.co/2d1hVmM/p7.jpg", gallery: ["https://i.ibb.co/2d1hVmM/p7.jpg"], category: "سلاسل" },
-    { id: 11, name: "سلسلة العملة القديمة", desc: "قلادة عصرية بتصميم عملة أثرية.", price: 165, img: "https://i.ibb.co/RSCk8sy/p11.jpg", category: "سلاسل", featured: true },
-    { id: 15, name: "سلسلة شوكر سوداء", desc: "شوكر أنيق من قماش المخمل الأسود.", price: 60, img: "https://i.ibb.co/ZJv2v3f/p15.jpg", category: "سلاسل" },
-    { id: 19, name: "سلسلة اسمك بالخط العربي", desc: "سلسلة بتصميم اسم من اختيارك.", price: 280, img: "https://i.ibb.co/4P2Bpdh/p19.jpg", category: "سلاسل" },
-    { id: 4, name: "قرط اللؤلؤة المتدلي", desc: "قرط كلاسيكي يضيف لمسة من الأناقة.", price: 80, img: "https://i.ibb.co/Ld1Jg8N/p4.jpg", gallery: ["https://i.ibb.co/Ld1Jg8N/p4.jpg"], category: "أقراط", featured: true },
-    { id: 8, name: "قرط الدائرة الذهبية", desc: "قرط دائري بسيط وأنيق لكل يوم.", price: 75, img: "https://i.ibb.co/PGrrYv0/p8.jpg", gallery: ["https://i.ibb.co/PGrrYv0/p8.jpg"], category: "أقراط" },
-    { id: 12, name: "قرط هوب صغير", desc: "قرط Hoop صغير وعملي للاستخدام اليومي.", price: 90, img: "https://i.ibb.co/BqgM0G0/p12.jpg", category: "أقراط" },
-    { id: 16, name: "قرط الكفة (Ear Cuff)", desc: "قرط عصري يزين الأذن بدون الحاجة لثقب.", price: 100, img: "https://i.ibb.co/9gPBFyM/p16.jpg", category: "أقراط" },
-    { id: 20, name: "قرط الكريستال الملون", desc: "قرط متدلي بأحجار كريستال ملونة.", price: 125, img: "https://i.ibb.co/m8g4W90/p20.jpg", category: "أقراط", featured: true },
-];
-const coupons = {
-    "ANAQA10": { type: "percent", value: 10 },
-    "WELCOME50": { type: "fixed", value: 50 }
-};
-const orderStatuses = {
-    review: { text: "تحت المراجعة", class: "review" },
-    shipping: { text: "قيد التوصيل", class: "shipping" },
-    delivered: { text: "تم الاستلام", class: "delivered" },
-    cancelled: { text: "ملغي", class: "cancelled" },
-    returned: { text: "تم الإرجاع", class: "returned" },
-};
-
-// =================================================================
-// 2. GLOBAL STATE
-// =================================================================
+// Global State
 let allProducts = [];
 let categories = [];
-let wishlist = JSON.parse(localStorage.getItem('anaqaWishlist')) || [];
+let wishlist = [];
 let cart = JSON.parse(localStorage.getItem('anaqaCart')) || [];
-let orders = JSON.parse(localStorage.getItem('anaqaOrders')) || [];
+let orders = [];
+let coupons = {};
 let appliedCoupon = null;
-let currentUser = null; // To hold user auth state
+let currentUser = null;
 
-// =================================================================
-// 3. DOM & UI INITIALIZATION
-// =================================================================
+// DOM Initialization
 document.addEventListener('DOMContentLoaded', () => {
     initApp();
-    loadData();
     setupAuthListeners();
 });
 
@@ -96,38 +53,30 @@ function initApp() {
     document.querySelector('.checkout-btn').addEventListener('click', handleCheckout);
 }
 
-// =================================================================
-// 4. AUTHENTICATION LOGIC (NEW SECTION)
-// =================================================================
+// Authentication Logic
 function setupAuthListeners() {
-    // Listen for auth state changes
-    auth.onAuthStateChanged(user => {
+    onAuthStateChanged(auth, async (userId) => {
         const authButtonsContainer = document.getElementById('auth-buttons-container');
-        if (user) {
-            // User is signed in
+        if (userId) {
             currentUser = {
-                uid: user.uid,
-                email: user.email,
-                displayName: user.displayName,
+                uid: userId.uid,
+                email: userId.email,
+                displayName: userId.displayName,
             };
-            // Update UI
             authButtonsContainer.innerHTML = `<button class="cta-button cta-button-small" id="logout-nav-btn">خروج</button>`;
             document.getElementById('logout-nav-btn').addEventListener('click', () => auth.signOut());
-            showToast(`أهلاً بك ${user.displayName || user.email}`, 'success');
+            showToast(`أهلاً بك ${userId.displayName || userId.email}`, 'success');
+            await loadUserData(userId.uid);
         } else {
-            // User is signed out
             currentUser = null;
-            // Update UI
             authButtonsContainer.innerHTML = `<button class="cta-button cta-button-small" id="login-nav-btn">تسجيل الدخول</button>`;
             document.getElementById('login-nav-btn').addEventListener('click', openAuthModal);
-            // Clear user-specific data
             wishlist = [];
             orders = [];
-            renderAllContent(); // Re-render to show empty state for wishlist/orders
+            renderAllContent();
         }
     });
 
-    // Auth modal controls
     document.querySelector('.close-auth-modal').addEventListener('click', closeAuthModal);
     document.getElementById('show-signup').addEventListener('click', (e) => {
         e.preventDefault();
@@ -140,13 +89,10 @@ function setupAuthListeners() {
         document.getElementById('login-form').style.display = 'block';
     });
 
-    // Form submissions
     document.querySelector('#login-form form').addEventListener('submit', handleLogin);
     document.querySelector('#signup-form form').addEventListener('submit', handleSignup);
-    
-    // Social sign in
     document.getElementById('google-signin-btn').addEventListener('click', signInWithGoogle);
-    // document.getElementById('facebook-signin-btn').addEventListener('click', signInWithFacebook); // Uncomment when ready
+    document.getElementById('facebook-signin-btn').addEventListener('click', signInWithFacebook);
 }
 
 function openAuthModal() {
@@ -161,14 +107,12 @@ function handleLogin(e) {
     e.preventDefault();
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
-    auth.signInWithEmailAndPassword(email, password)
-        .then(userCredential => {
+    signInWithEmailAndPassword(auth, email, password)
+        .then(() => {
             closeAuthModal();
             showToast('تم تسجيل الدخول بنجاح!', 'success');
         })
-        .catch(error => {
-            showToast(`خطأ: ${error.message}`, 'error');
-        });
+        .catch(error => showToast(`خطأ: ${error.message}`, 'error'));
 }
 
 function handleSignup(e) {
@@ -182,101 +126,146 @@ function handleSignup(e) {
         return;
     }
 
-    auth.createUserWithEmailAndPassword(email, password)
+    createUserWithEmailAndPassword(auth, email, password)
         .then(userCredential => {
             closeAuthModal();
             showToast('تم إنشاء الحساب وتسجيل الدخول بنجاح!', 'success');
         })
-        .catch(error => {
-            showToast(`خطأ: ${error.message}`, 'error');
-        });
+        .catch(error => showToast(`خطأ: ${error.message}`, 'error'));
 }
 
 function signInWithGoogle() {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    auth.signInWithPopup(provider)
+    const provider = new GoogleAuthProvider();
+    signInWithPopup(auth, provider)
         .then(result => {
             closeAuthModal();
             showToast(`أهلاً بك، ${result.user.displayName}!`, 'success');
-        }).catch(error => {
-            showToast(`خطأ في تسجيل الدخول عبر جوجل: ${error.message}`, 'error');
-        });
+        }).catch(error => showToast(`خطأ في تسجيل الدخول عبر جوجل: ${error.message}`, 'error'));
 }
 
-// =================================================================
-// 5. DATA LOADING & RENDERING
-// =================================================================
-function loadData() {
-    allProducts = dummyProducts;
-    categories = dummyCategories;
+function signInWithFacebook() {
+    const provider = new FacebookAuthProvider();
+    signInWithPopup(auth, provider)
+        .then(result => {
+            closeAuthModal();
+            showToast(`أهلاً بك، ${result.user.displayName}!`, 'success');
+        }).catch(error => showToast(`خطأ في تسجيل الدخول عبر فيسبوك: ${error.message}`, 'error'));
+}
+
+// Load Data from Firebase
+async function loadUserData(userId) {
+    const userDoc = await getDoc(doc(db, "users", userId));
+    if (userDoc.exists()) {
+        wishlist = userDoc.data().wishlist() || [];
+    }
+    await loadProducts();
+    await loadCategories();
+    await loadCoupons();
+    await loadOrders(userId);
     renderAllContent();
 }
 
-function renderAllContent() {
-     renderCategories();
-     filterAndSortProducts();
-     renderFeaturedProducts();
-     renderWishlistPage();
-     renderOrdersPage();
-     updateCart();
+async function loadProducts() {
+    allProducts = [];
+    const querySnapshot = await getDocs(collection(db, "products"));
+    querySnapshot.forEach(doc => {
+        allProducts.push({ id: doc.id, ...doc.data() });
+    });
 }
 
-function renderProducts(products, container) {
+async function loadCategories() {
+    categories = [];
+    const querySnapshot = await getDocs(collection(db, "categories"));
+    querySnapshot.forEach(doc => {
+        categories.push({ id: doc.id, ...doc.data() });
+    });
+}
+
+async function loadCoupons() {
+    coupons = {};
+    const querySnapshot = await getDocs(collection(db, "coupons"));
+    querySnapshot.forEach(doc => {
+        coupons[doc.data().code] = { id: doc.id, ...doc.data() };
+    });
+}
+
+async function loadOrders(userId) {
+    orders = [];
+    const querySnapshot = await getDocs(collection(db, "orders"));
+    querySnapshot.forEach(doc => {
+        if (doc.data().userId === userId) {
+            orders.push({ id: doc.id, ...doc.data() });
+        }
+    });
+}
+
+// Render Content
+function renderAllContent() {
+    renderCategories();
+    filterAndSortProducts();
+    renderFeaturedProducts();
+    renderWishlistPage();
+    renderOrdersPage();
+    updateCart();
+}
+
+function renderProducts(products, containerId) {
+    const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
-    const emptyMsg = container.id === 'wishlist-grid' ? 'قائمة مفضلاتك فارغة حاليًا.' : 'لا توجد منتجات تطابق بحثك.';
-    if(products.length === 0) {
-         container.innerHTML = `<p class="empty-page-message">${emptyMsg}</p>`;
-         return;
+    const emptyMsg = containerId === 'wishlist-grid' ? 'قائمة مفضلاتك فارغة حاليًا.' : 'لا توجد منتجات تطابق بحثك.';
+    if (products.length === 0) {
+        container.innerHTML = `<p class="empty-page-message">${emptyMsg}</p>`;
+        return;
     }
-    
+
     products.forEach(product => {
         const isLiked = wishlist.includes(product.id);
         const card = document.createElement('div');
         card.className = 'product-card';
         card.dataset.productId = product.id;
         card.innerHTML = `
-            <div class="product-image-container"> <img src="${product.img}" alt="${product.name}" loading="lazy" class="product-main-image" /> </div>
-            <div class="product-actions">
-                 <button class="action-btn wishlist-btn" data-product-id="${product.id}" aria-label="Add to wishlist"><i class="fas fa-heart"></i></button>
-                 <button class="action-btn add-to-cart-btn" data-product-id="${product.id}" aria-label="Add to cart"><i class="fas fa-shopping-bag"></i></button>
+            <div class="product-image-container">
+                <img src="${product.img}" alt="${product.name}" loading="lazy" class="product-main-image" />
             </div>
-            <div class="product-info"> <h3 class="product-name-link">${product.name}</h3> <span class="product-price">${product.price} جنيه</span> </div>
-        `;
+            <div class="product-actions">
+                <button class="action-btn wishlist-btn${isLiked ? ' liked' : ''}" data-product-id="${product.id}" aria-label="Add to wishlist"><i class="fas fa-heart"></i></button>
+                <button class="action-btn add-to-cart-btn" data-product-id="${product.id}" aria-label="Add to cart"><i class="fas fa-shopping-cart"></i></button>
+            </div>
+            <div class="product-info">
+                <h3 class="product-name-link">${product.name}</h3>
+                <span class="product-price">${product.price} جنيه</span>
+            </div>`;
         container.appendChild(card);
     });
-    updateWishlistState();
 }
 
 function renderFeaturedProducts() {
-    renderProducts(allProducts.filter(p => p.featured), document.getElementById('featured-products-grid'));
+    renderProducts(allProducts.filter(p => p.featured), 'featured-products-grid');
 }
 
 function renderCategories() {
     const container = document.getElementById('categories-filter');
     container.innerHTML = '<button class="category-btn active" data-filter="all">الكل</button>';
     categories.forEach(category => {
-        container.innerHTML += `<button class="category-btn" data-filter="${category}">${category}</button>`;
+        container.innerHTML += `<button class="category-btn" data-filter="${category.id}">${category.name}</button>`;
     });
 }
 
 function filterAndSortProducts() {
     let productsToDisplay = [...allProducts];
-    const activeCategory = document.querySelector('#categories-filter .category-btn.active')?.dataset.filter || 'all';
+    const activeCategory = document.querySelector('#categories-wrapper .category-btn.active')?.dataset.filter || 'all';
     if (activeCategory !== 'all') {
-        productsToDisplay = allProducts.filter(p => p.category === activeCategory);
+        productsToDisplay = productsToDisplay.filter(p => p.category === activeCategory);
     }
     const sortValue = document.getElementById('sort-select').value;
     if (sortValue === 'price-asc') productsToDisplay.sort((a, b) => a.price - b.price);
     else if (sortValue === 'price-desc') productsToDisplay.sort((a, b) => b.price - a.price);
-    
-    renderProducts(productsToDisplay, document.getElementById('product-grid'));
+
+    renderProducts(productsToDisplay, 'product-grid');
 }
 
-
-// =================================================================
-// 6. PAGE & MODAL NAVIGATION
-// =================================================================
+// Page & Modal Navigation
 function showPage(pageId) {
     if (!currentUser && (pageId === 'wishlist' || pageId === 'orders')) {
         showToast('يجب عليك تسجيل الدخول أولاً لعرض هذه الصفحة.', 'info');
@@ -285,13 +274,13 @@ function showPage(pageId) {
     }
     document.querySelectorAll('.page-section').forEach(p => p.classList.remove('active'));
     document.getElementById(`${pageId}-page`).classList.add('active');
-    
+
     document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
     document.querySelector(`.nav-link[data-page="${pageId}"]`).classList.add('active');
 
-    if(pageId === 'wishlist') renderWishlistPage();
-    if(pageId === 'orders') renderOrdersPage();
-    
+    if (pageId === 'wishlist') renderWishlistPage();
+    if (pageId === 'orders') renderOrdersPage();
+
     const navLinks = document.querySelector('.nav-links');
     if (navLinks.classList.contains('active')) navLinks.classList.remove('active');
     window.scrollTo(0, 0);
@@ -300,19 +289,14 @@ function showPage(pageId) {
 function openProductModal(productId) {
     const product = allProducts.find(p => p.id === productId);
     if (!product) return;
-    
+
     const container = document.getElementById('product-detail-content');
-    const galleryHTML = (product.gallery && product.gallery.length > 0 ? product.gallery : [product.img]).map((imgUrl, index) => 
-        `<img src="${imgUrl}" alt="صورة مصغرة ${index + 1}" class="thumbnail ${index === 0 ? 'active' : ''}" data-img-src="${imgUrl}">`
-    ).join('');
-    
     const isLiked = wishlist.includes(product.id);
 
     container.innerHTML = `
         <div class="product-detail-layout">
             <div class="product-gallery">
-                <div class="main-image-container"><img src="${product.gallery ? product.gallery[0] : product.img}" id="main-product-image" alt="${product.name}"></div>
-                <div class="thumbnail-container">${galleryHTML}</div>
+                <div class="main-image-container"><img src="${product.img}" id="main-product-image" alt="${product.name}"></div>
             </div>
             <div class="product-details-info">
                 <div class="detail-header">
@@ -325,7 +309,7 @@ function openProductModal(productId) {
                 <p class="description">${product.desc}</p>
                 <div class="price">${product.price} جنيه</div>
                 <div class="product-detail-actions">
-                    <button class="cta-button add-to-cart-btn" data-product-id="${product.id}">أضف إلى السلة</button>
+                    <button class="cta-button add-to-cart-btn" data-product-id="${product.id}">أضف إلى به السلة</button>
                 </div>
                 <div class="share-buttons">
                     <p>مشاركة:</p>
@@ -341,9 +325,7 @@ function closeProductModal() {
     document.getElementById('product-detail-modal').classList.remove('open');
 }
 
-// =================================================================
-// 7. CART LOGIC (addToCart is now protected)
-// =================================================================
+// Cart Logic
 function openCart() {
     document.getElementById('cart-sidebar').classList.add('open');
     document.getElementById('cart-overlay').classList.add('open');
@@ -355,18 +337,17 @@ function closeCart() {
 }
 
 function addToCart(productId) {
-    // PROTECTED ACTION
     if (!currentUser) {
         showToast('يجب عليك تسجيل الدخول أولاً للإضافة إلى السلة.', 'info');
         openAuthModal();
-        return; // Stop the function
+        return;
     }
-    
+
     const product = allProducts.find(p => p.id === productId);
     if (!product) return;
     const cartItem = cart.find(item => item.id === productId);
-    if(cartItem) cartItem.quantity++;
-    else cart.push({ ...product, quantity: 1 });
+    if (cartItem) cartItem.quantity++;
+    else cart.push({ id: productId, ...product, quantity: 1 });
     showToast('تمت الإضافة إلى سلة المشتريات ✅', 'success');
     updateCart();
 }
@@ -405,14 +386,13 @@ function updateCartSummary() {
     let discountValue = 0;
     const discountRow = document.getElementById('discount-row');
 
-    if(appliedCoupon) {
-        if(appliedCoupon.type === 'percent') discountValue = subtotal * (appliedCoupon.value / 100);
+    if (appliedCoupon) {
+        if (appliedCoupon.type === 'percent') discountValue = subtotal * (appliedCoupon.value / 100);
         else discountValue = Math.min(subtotal, appliedCoupon.value);
-        
         discountRow.style.display = 'flex';
         document.getElementById('cart-discount').textContent = `- ${discountValue.toFixed(2)} جنيه`;
     } else {
-         discountRow.style.display = 'none';
+        discountRow.style.display = 'none';
     }
     const total = Math.max(0, subtotal - discountValue);
     document.getElementById('cart-subtotal').textContent = `${subtotal.toFixed(2)} جنيه`;
@@ -429,7 +409,7 @@ function updateCartCount() {
 function applyCoupon() {
     const couponInput = document.getElementById('coupon-input');
     const code = couponInput.value.trim().toUpperCase();
-    if(coupons[code]) {
+    if (coupons[code]) {
         appliedCoupon = coupons[code];
         showToast(`🎉 تم تطبيق الخصم بنجاح`, 'success');
     } else {
@@ -440,12 +420,8 @@ function applyCoupon() {
     updateCartSummary();
 }
 
-
-// =================================================================
-// 8. CHECKOUT & ORDERS (Protected)
-// =================================================================
-function handleCheckout() {
-    // PROTECTED ACTION
+// Checkout & Orders
+async function handleCheckout() {
     if (!currentUser) {
         showToast('يجب عليك تسجيل الدخول أولاً لإتمام الشراء.', 'info');
         openAuthModal();
@@ -456,94 +432,64 @@ function handleCheckout() {
         showToast('سلة التسوق فارغة!', 'error');
         return;
     }
-    
+
     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     let discountValue = 0;
     if (appliedCoupon) {
-        if(appliedCoupon.type === 'percent') discountValue = subtotal * (appliedCoupon.value / 100);
+        if (appliedCoupon.type === 'percent') discountValue = subtotal * (appliedCoupon.value / 100);
         else discountValue = Math.min(subtotal, appliedCoupon.value);
     }
     const total = subtotal - discountValue;
 
     const newOrder = {
-        id: Date.now(),
+        userId: currentUser.uid,
         date: new Date().toLocaleDateString('ar-EG'),
         items: [...cart],
-        total: total,
-        status: 'review',
-        userId: currentUser.uid // Link order to user
+        total,
+        status: 'review'
     };
-    
-    orders.unshift(newOrder);
-    localStorage.setItem('anaqaOrders', JSON.stringify(orders));
-    
-    cart = [];
-    appliedCoupon = null;
-    updateCart();
-    closeCart();
-    
-    showToast('🎉 تم إرسال طلبك بنجاح!', 'success');
-    showPage('orders');
 
-    setTimeout(() => updateOrderStatus(newOrder.id, 'shipping'), 15000);
-    setTimeout(() => updateOrderStatus(newOrder.id, 'delivered'), 30000);
-}
-
-function updateOrderStatus(orderId, newStatus) {
-    const order = orders.find(o => o.id === orderId);
-    if (order && order.status !== 'cancelled' && order.status !== 'returned') {
-        order.status = newStatus;
-        localStorage.setItem('anaqaOrders', JSON.stringify(orders));
-        if (document.getElementById('orders-page').classList.contains('active')) {
-            renderOrdersPage();
-        }
-         showToast(`تم تحديث حالة الطلب #${orderId} إلى ${orderStatuses[newStatus].text}`, 'info');
-    }
-}
-
-function cancelOrder(orderId) {
-    const order = orders.find(o => o.id === orderId);
-    if(order && order.status === 'review') {
-        order.status = 'cancelled';
-        localStorage.setItem('anaqaOrders', JSON.stringify(orders));
-        renderOrdersPage();
-        showToast('تم إلغاء الطلب.', 'info');
-    }
-}
-
-function returnOrder(orderId) {
-    const order = orders.find(o => o.id === orderId);
-    if(order && order.status === 'delivered') {
-        order.status = 'returned';
-        localStorage.setItem('anaqaOrders', JSON.stringify(orders));
-        renderOrdersPage();
-        showToast('تم تسجيل طلب الإرجاع.', 'info');
+    try {
+        await addDoc(collection(db, "orders"), newOrder);
+        cart = [];
+        appliedCoupon = null;
+        updateCart();
+        closeCart();
+        showToast('🎉 تم إرسال طلبك بنجاح!', 'success');
+        showPage('orders');
+        await loadOrders(currentUser.uid);
+    } catch (error) {
+        showToast(`خطأ: ${error.message}`, 'error');
     }
 }
 
 function renderOrdersPage() {
     const container = document.getElementById('orders-list');
-    
-    if (!currentUser) { // Extra check
+    if (!currentUser) {
         container.innerHTML = '<p class="empty-page-message">يجب تسجيل الدخول لعرض الطلبات.</p>';
         return;
     }
 
-    const userOrders = orders.filter(order => order.userId === currentUser.uid);
-
-    if (userOrders.length === 0) {
+    if (orders.length === 0) {
         container.innerHTML = '<p class="empty-page-message">ليس لديك أي طلبات حاليًا.</p>';
         return;
     }
-    container.innerHTML = userOrders.map(order => {
-        const statusInfo = orderStatuses[order.status] || {text: 'غير معروف', class: ''};
+
+    container.innerHTML = orders.map(order => {
+        const statusInfo = {
+            review: { text: "تحت المراجعة", class: "review" },
+            shipping: { text: "قيد التوصيل", class: "shipping" },
+            delivered: { text: "تم الاستلام", class: "delivered" },
+            cancelled: { text: "ملغي", class: "cancelled" },
+            returned: { text: "تم الإرجاع", class: "returned" }
+        }[order.status] || { text: 'غير معروف', class: '' };
         const itemsSummary = order.items.map(item => `${item.name} (x${item.quantity})`).join('، ');
-        
+
         let actionButtonHTML = '';
-        if(order.status === 'review') {
-             actionButtonHTML = `<button class="action-button-order cancel" data-order-id="${order.id}">إلغاء الطلب</button>`;
+        if (order.status === 'review') {
+            actionButtonHTML = `<button class="action-button-order cancel" data-order-id="${order.id}">إلغاء الطلب</button>`;
         } else if (order.status === 'delivered') {
-             actionButtonHTML = `<button class="action-button-order return" data-order-id="${order.id}">إرجاع الطلب</button>`;
+            actionButtonHTML = `<button class="action-button-order return" data-order-id="${order.id}">إرجاع الطلب</button>`;
         }
 
         return `
@@ -562,55 +508,38 @@ function renderOrdersPage() {
                         ${actionButtonHTML}
                     </div>
                 </div>
-            </div>
-        `;
+            </div>`;
     }).join('');
 }
 
-
-// =================================================================
-// 9. WISHLIST LOGIC (Protected)
-// =================================================================
-function toggleWishlist(productId) {
-    // PROTECTED ACTION
+// Wishlist Logic
+async function toggleWishlist(productId) {
     if (!currentUser) {
         showToast('يجب عليك تسجيل الدخول أولاً للإضافة إلى المفضلة.', 'info');
         openAuthModal();
-        return; // Stop the function
+        return;
     }
 
-    const index = wishlist.indexOf(productId);
-    if(index > -1) {
-        wishlist.splice(index, 1);
+    const userRef = doc(db, "users", currentUser.uid);
+    if (wishlist.includes(productId)) {
+        wishlist = wishlist.filter(id => id !== productId);
+        await updateDoc(userRef, { wishlist: arrayRemove(productId) });
         showToast('تمت الإزالة من المفضلة 🤍', 'info');
     } else {
         wishlist.push(productId);
+        await updateDoc(userRef, { wishlist: arrayUnion(productId) });
         showToast('أُضيف إلى المفضلة ♥️', 'info');
     }
-    localStorage.setItem('anaqaWishlist', JSON.stringify(wishlist));
-    updateWishlistState();
-    if(document.getElementById('wishlist-page').classList.contains('active')) {
-        renderWishlistPage();
-    }
-}
-
-function updateWishlistState() {
-    document.querySelectorAll('.wishlist-btn').forEach(btn => {
-        const productId = parseInt(btn.dataset.productId);
-        if(productId) btn.classList.toggle('liked', wishlist.includes(productId));
-    });
+    renderWishlistPage();
 }
 
 function renderWishlistPage() {
     const likedProducts = allProducts.filter(p => wishlist.includes(p.id));
-    renderProducts(likedProducts, document.getElementById('wishlist-grid'));
+    renderProducts(likedProducts, 'wishlist-grid');
 }
 
-
-// =================================================================
-// 10. GLOBAL EVENT HANDLER & TOASTS (Unchanged)
-// =================================================================
-function handleGlobalClick(e) {
+// Global Event Handler
+async function handleGlobalClick(e) {
     const target = e.target;
     let targetBtn;
 
@@ -618,70 +547,77 @@ function handleGlobalClick(e) {
     const navLink = target.closest('[data-page]');
     if (navLink) {
         e.preventDefault();
-        showPage(navLink.dataset.page);
+        showPage(navLink.dataset.pageId);
     }
-    
+
     // Wishlist button
     if ((targetBtn = target.closest('.wishlist-btn'))) {
-        const productId = parseInt(targetBtn.dataset.productId);
-        if(productId) toggleWishlist(productId);
-    } 
+        const productId = targetBtn.dataset.productId;
+        if (productId) await toggleWishlist(productId);
+    }
+
     // Add to cart button
     else if ((targetBtn = target.closest('.add-to-cart-btn'))) {
-        const productId = parseInt(targetBtn.dataset.productId);
-        if(productId) addToCart(productId);
-    } 
+        const productId = targetBtn.dataset.productId;
+        if (productId) addToCart(productId);
+    }
+
     // Product card image/name click
     else if (target.closest('.product-main-image, .product-name-link')) {
-        const productId = parseInt(target.closest('.product-card').dataset.productId);
-        if(productId) openProductModal(productId);
+        const productId = target.closest('.product-card').dataset.productId;
+        if (productId) openProductModal(productId);
     }
+
     // Category filter button
     else if ((targetBtn = target.closest('.category-btn'))) {
         document.querySelectorAll('.category-btn').forEach(btn => btn.classList.remove('active'));
         targetBtn.classList.add('active');
         filterAndSortProducts();
     }
-    
+
     // Cart quantity/remove controls
     const cartControl = target.closest('.quantity-btn, .remove-item-btn');
     if (cartControl) {
-        const cartProductId = parseInt(cartControl.dataset.id);
+        const productId = cartControl.dataset.id;
         if (cartControl.classList.contains('quantity-btn')) {
             const change = parseInt(cartControl.dataset.change);
-            const item = cart.find(i => i.id === cartProductId);
+            const item = cart.find(i => i.id === productId);
             if (item) {
                 item.quantity += change;
-                if (item.quantity <= 0) cart = cart.filter(i => i.id !== cartProductId);
+                if (item.quantity <= 0) cart = cart.filter(i => i.id !== productId);
                 updateCart();
             }
-        } else { // Remove button
-            cart = cart.filter(i => i.id !== cartProductId);
+        } else {
+            cart = cart.filter(i => i.id !== productId);
             showToast('تم حذف المنتج من السلة', 'info');
             updateCart();
         }
     }
-    // Product Detail Gallery Thumbnail
-    const thumbnail = target.closest('.thumbnail');
-    if (thumbnail) {
-         document.getElementById('main-product-image').src = thumbnail.dataset.imgSrc;
-         document.querySelectorAll('.thumbnail').forEach(t => t.classList.remove('active'));
-         thumbnail.classList.add('active');
-    }
+
     // Order action buttons
     const orderActionBtn = target.closest('.action-button-order');
-    if(orderActionBtn){
-         const orderId = parseInt(orderActionBtn.dataset.orderId);
-         if(orderActionBtn.classList.contains('cancel')) cancelOrder(orderId);
-         else if(orderActionBtn.classList.contains('return')) returnOrder(orderId);
+    if (orderActionBtn) {
+        const orderId = orderActionBtn.dataset.orderId;
+        if (orderActionBtn.classList.contains('cancel')) {
+            await updateDoc(doc(db, "orders", orderId), { status: "cancelled" });
+            showToast('تم إلغاء الطلب.', 'info');
+            await loadOrders(currentUser.uid);
+            renderOrdersPage();
+        } else if (orderActionBtn.classList.contains('return')) {
+            await updateDoc(doc(db, "orders", orderId), { status: "returned" });
+            showToast('تم تسجيل طلب الإرجاع.', 'info');
+            await loadOrders(currentUser.uid);
+            renderOrdersPage();
+        }
     }
 }
 
+// Show Toast
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.textContent = message;
     container.appendChild(toast);
-    setTimeout(() => { toast.remove(); }, 3000);
+    setTimeout(() => toast.remove(), 3000);
 }
