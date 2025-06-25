@@ -640,15 +640,17 @@ async function handleCheckout() {
     }
 
     const order = {
-        userId: user.uid,
-        items: cart,
-        total: total,
-        total_before_discount: totalBefore,
-        status: 'review',
-        date: new Date().toISOString(),
-        coupon_code: couponCode || undefined,
-        order_number: lastOrderId
+    userId: user.uid,
+    items: cart,
+    total: total,
+    total_before_discount: totalBefore,
+    status: 'review',
+    date: new Date().toISOString(),
+    order_number: lastOrderId
     };
+    if (couponCode) {
+        order.coupon_code = couponCode;
+    }
     try {
         await addDoc(collection(db, "orders"), order);
         cart = [];
